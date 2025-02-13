@@ -171,7 +171,11 @@ def login():
             print(f"Usuário não encontrado para email: {data.get('email')}")
             return jsonify({'error': 'Credenciais inválidas'}), 401
         
-        if check_password_hash(user.password, data.get('password')):
+        password = data.get('password')
+        print(f"Verificando senha para usuário: {user.username}")
+        print(f"Hash armazenado: {user.password[:20]}...")  # Mostrar parte do hash para debug
+        
+        if check_password_hash(user.password, password):
             print(f"Login bem-sucedido para usuário: {user.username}")
             login_user(user)
             token = generate_token(user.id)
@@ -189,25 +193,36 @@ def register():
     if request.method == 'GET':
         return render_template('register.html')
     
-    data = request.form
-    if User.query.filter_by(email=data.get('email')).first():
-        return jsonify({'error': 'Email já cadastrado'}), 400
-    
-    # Capturar localização do usuário
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    
-    user = User(
-        username=data.get('username'),
-        email=data.get('email'),
-        password=generate_password_hash(data.get('password')),
-        latitude=latitude,
-        longitude=longitude
-    )
-    db.session.add(user)
-    db.session.commit()
-    
-    return jsonify({'message': 'Usuário registrado com sucesso', 'redirect': url_for('login')})
+    try:
+        data = request.form
+        if User.query.filter_by(email=data.get('email')).first():
+            return jsonify({'error': 'Email já cadastrado'}), 400
+        
+        # Padronizar o hash da senha
+        password = data.get('password')
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256:150000')
+        
+        # Capturar localização do usuário
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        
+        user = User(
+            username=data.get('username'),
+            email=data.get('email'),
+            password=hashed_password,  # Usar o hash padronizado
+            latitude=latitude,
+            longitude=longitude
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        print(f"Usuário registrado com sucesso: {user.email}")
+        return jsonify({'message': 'Usuário registrado com sucesso', 'redirect': url_for('login')})
+        
+    except Exception as e:
+        print(f"Erro no registro: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': 'Erro ao registrar usuário'}), 500
 
 @app.route('/me')
 @login_required
@@ -364,23 +379,29 @@ def prefecture_reports():
 
 def init_db():
     with app.app_context():
-        # Criar tabelas se não existirem
-        db.create_all()
-        
-        # Criar admin se não existir
-        admin = User.query.filter_by(email='admin@admin.admin').first()
-        if not admin:
-            admin = User(
-                username='admin',
-                email='admin@admin.admin',
-                password=generate_password_hash('senha123'),
-                is_admin=True,
-                is_prefecture=True,
-                city='Todas'
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print("Admin criado com sucesso!")
+        try:
+            # Criar tabelas se não existirem
+            db.create_all()
+            
+            # Criar admin se não existir
+            admin = User.query.filter_by(email='admin@admin.admin').first()
+            if not admin:
+                admin = User(
+                    username='admin',
+                    email='admin@admin.admin',
+                    password=generate_password_hash('senha123', method='pbkdf2:sha256:150000'),
+                    is_admin=True,
+                    is_prefecture=True,
+                    city='Todas'
+                )
+                db.session.add(admin)
+                db.session.commit()
+                print("Admin criado com sucesso!")
+                
+        except Exception as e:
+            print(f"Erro ao inicializar banco: {str(e)}")
+            db.session.rollback()
+            raise e
 
 @app.errorhandler(500)
 def internal_error(error):

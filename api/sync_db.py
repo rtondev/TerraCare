@@ -14,7 +14,7 @@ def sync_database():
                 admin = User(
                     username='admin',
                     email='admin@admin.admin',
-                    password=generate_password_hash('senha123'),
+                    password=generate_password_hash('senha123', method='pbkdf2:sha256:150000'),
                     is_admin=True,
                     is_prefecture=True,
                     city='Todas'
