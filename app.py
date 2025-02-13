@@ -30,14 +30,27 @@ class RetryingDBConnection:
     def connect(self):
         for i in range(self.retries):
             try:
-                self.db = SQLAlchemy(self.app)
+                print(f"Tentativa {i+1} de conectar ao banco...")
+                if not self.app.config['SQLALCHEMY_DATABASE_URI']:
+                    raise Exception("DATABASE_URL não está configurada")
+                    
+                self.db = SQLAlchemy()
+                self.db.init_app(self.app)
+                
+                # Testar conexão
+                with self.app.app_context():
+                    self.db.engine.connect()
+                    print("Conexão com o banco estabelecida com sucesso!")
+                
                 return self.db
             except Exception as e:
                 if i == self.retries - 1:  # Última tentativa
+                    print(f"Erro fatal na conexão com o banco: {str(e)}")
                     raise e
-                print(f"Tentativa {i+1} de conexão com o banco falhou. Tentando novamente...")
+                print(f"Tentativa {i+1} falhou com erro: {str(e)}")
+                print("Tentando novamente em 1 segundo...")
                 import time
-                time.sleep(1)  # Espera 1 segundo antes de tentar novamente
+                time.sleep(1)
 
 db_connection = RetryingDBConnection(app)
 db = db_connection.connect()
