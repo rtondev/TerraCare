@@ -12,11 +12,32 @@ from flask_migrate import Migrate
 from json import dumps, loads
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://sql5762446:ifHH5F6xhx@sql5.freesqldatabase.com:3306/sql5762446'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'sua_chave_secreta_aqui')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'mysql+pymysql://sql5762446:ifHH5F6xhx@sql5.freesqldatabase.com:3306/sql5762446')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+# Inicializar o SQLAlchemy com retry
+class RetryingDBConnection:
+    def __init__(self, app):
+        self.app = app
+        self.retries = 3
+        self.db = None
+
+    def connect(self):
+        for i in range(self.retries):
+            try:
+                self.db = SQLAlchemy(self.app)
+                return self.db
+            except Exception as e:
+                if i == self.retries - 1:  # Última tentativa
+                    raise e
+                print(f"Tentativa {i+1} de conexão com o banco falhou. Tentando novamente...")
+                import time
+                time.sleep(1)  # Espera 1 segundo antes de tentar novamente
+
+db_connection = RetryingDBConnection(app)
+db = db_connection.connect()
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
