@@ -11,6 +11,10 @@ import folium
 from flask_migrate import Migrate
 from json import dumps, loads
 from dotenv import load_dotenv
+import pymysql
+
+# Registrar o PyMySQL como driver MySQL
+pymysql.install_as_MySQLdb()
 
 # Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -19,6 +23,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+    'connect_args': {
+        'connect_timeout': 10
+    }
+}
 
 # Inicializar o SQLAlchemy com retry
 class RetryingDBConnection:

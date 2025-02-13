@@ -15,8 +15,5 @@
       "src": "/(.*)",
       "dest": "app.py"
     }
-  ],
-  "buildCommand": "pip install -r requirements.txt",
-  "outputDirectory": ".",
-  "public": true
+  ]
 } 
