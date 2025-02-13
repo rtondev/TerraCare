@@ -8,12 +8,20 @@
         {
             "src": "frontend/**",
             "use": "@vercel/static"
+        },
+        {
+            "src": "data/versioned_database.db",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
         {
             "src": "/static/(.*)",
             "dest": "/frontend/$1"
+        },
+        {
+            "src": "/data/versioned_database.db",
+            "dest": "/data/versioned_database.db"
         },
         {
             "src": "/api/(.*)",

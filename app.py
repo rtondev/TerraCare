@@ -10,17 +10,12 @@ import shutil
 from datetime import datetime
 import json
 
-# Configuração para ambiente serverless
-IS_VERCEL = os.environ.get('VERCEL')
-if IS_VERCEL:
-    # Na Vercel, usamos um diretório temporário para o SQLite
-    DB_PATH = '/tmp/database.db'
-else:
-    # Localmente, mantemos o comportamento atual
-    DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    DB_PATH = os.path.join(DATA_DIR, "database.db")
+# Configuração do banco de dados
+DB_NAME = "database.db"
+DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR)
+DB_PATH = os.path.join(DB_DIR, DB_NAME)
 
 app = Flask(__name__, static_folder='frontend')
 CORS(app)
@@ -213,31 +208,40 @@ def criar_admin_padrao():
 
 def backup_database():
     """Cria um backup do banco de dados"""
-    if not IS_VERCEL:  # Só faz backup em ambiente local
-        try:
-            db_path = DB_PATH
-            if os.path.exists(db_path):
-                backup_dir = os.path.join(DATA_DIR, 'backups')
-                if not os.path.exists(backup_dir):
-                    os.makedirs(backup_dir)
+    try:
+        if os.path.exists(DB_PATH):
+            backup_dir = os.path.join(DB_DIR, 'backups')
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_path = os.path.join(backup_dir, f'database_{timestamp}.db')
+            shutil.copy2(DB_PATH, backup_path)
+            
+            # Manter apenas os últimos 5 backups
+            backups = sorted([f for f in os.listdir(backup_dir) if f.startswith('database_')])
+            for old_backup in backups[:-5]:
+                os.remove(os.path.join(backup_dir, old_backup))
                 
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                backup_path = os.path.join(backup_dir, f'database_{timestamp}.db')
-                shutil.copy2(db_path, backup_path)
-                
-                backups = sorted([f for f in os.listdir(backup_dir) if f.startswith('database_')])
-                for old_backup in backups[:-5]:
-                    os.remove(os.path.join(backup_dir, old_backup))
-                    
-                print(f'Backup criado: {backup_path}')
-        except Exception as e:
-            print(f'Erro ao criar backup: {e}')
+            print(f'Backup criado: {backup_path}')
+            
+            # Copiar o banco atual para um arquivo que será versionado
+            versioned_db = os.path.join(DB_DIR, 'versioned_database.db')
+            shutil.copy2(DB_PATH, versioned_db)
+    except Exception as e:
+        print(f'Erro ao criar backup: {e}')
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
-        criar_admin_padrao()
-    
-    if not IS_VERCEL:
+        # Se não existir banco versionado, criar as tabelas do zero
+        if not os.path.exists(DB_PATH):
+            # Se existir uma versão versionada, usar ela como base
+            versioned_db = os.path.join(DB_DIR, 'versioned_database.db')
+            if os.path.exists(versioned_db):
+                shutil.copy2(versioned_db, DB_PATH)
+            else:
+                db.create_all()
+                criar_admin_padrao()
+        
         backup_database()
-        app.run(debug=True, port=5000) 
+    app.run(debug=True, port=5000) 
