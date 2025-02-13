@@ -12,6 +12,7 @@ from flask_migrate import Migrate
 from json import dumps, loads
 from dotenv import load_dotenv
 import pymysql
+from sqlalchemy import event
 
 # Registrar o PyMySQL como driver MySQL
 pymysql.install_as_MySQLdb()
@@ -119,6 +120,8 @@ class User(UserMixin, db.Model):
     comments = db.relationship('Comment', backref='author', lazy=True)
 
 class Report(db.Model):
+    __tablename__ = 'report'
+    
     id = db.Column(db.Integer, primary_key=True)
     address = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -126,9 +129,15 @@ class Report(db.Model):
     longitude = db.Column(db.Float, nullable=False)
     polygon_points = db.Column(db.Text)
     status = db.Column(db.String(20), default='Em Análise')
+    city = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comments = db.relationship('Comment', backref='report', lazy=True)
+
+    def __init__(self, **kwargs):
+        super(Report, self).__init__(**kwargs)
+        if not self.city and hasattr(current_user, 'city'):
+            self.city = current_user.city
 
     @property
     def polygon_points_list(self):
@@ -286,17 +295,30 @@ def register():
         latitude = data.get('latitude')
         longitude = data.get('longitude')
         
+        # Obter cidade do usuário
+        try:
+            geolocator = Nominatim(user_agent="terracare")
+            location = geolocator.reverse(f"{latitude}, {longitude}")
+            city = location.raw.get('address', {}).get('city') or location.raw.get('address', {}).get('town')
+            
+            if not city:
+                return jsonify({'error': 'Não foi possível determinar sua cidade'}), 400
+        except Exception as e:
+            print(f"Erro ao obter cidade: {str(e)}")
+            return jsonify({'error': 'Erro ao obter sua localização'}), 500
+        
         user = User(
             username=data.get('username'),
             email=data.get('email'),
-            password=hashed_password,  # Usar o hash padronizado
+            password=hashed_password,
             latitude=latitude,
-            longitude=longitude
+            longitude=longitude,
+            city=city  # Salvar a cidade do usuário
         )
         db.session.add(user)
         db.session.commit()
         
-        print(f"Usuário registrado com sucesso: {user.email}")
+        print(f"Usuário registrado com sucesso: {user.email} na cidade: {city}")
         return jsonify({'message': 'Usuário registrado com sucesso', 'redirect': url_for('login')})
         
     except Exception as e:
@@ -337,7 +359,13 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    reports = Report.query.order_by(Report.created_at.desc()).all()
+    if current_user.is_admin:
+        reports = Report.query.order_by(Report.created_at.desc()).all()
+    else:
+        reports = Report.query.filter_by(city=current_user.city)\
+            .order_by(Report.created_at.desc())\
+            .all()
+    
     return render_template('home.html', reports=reports)
 
 @app.route('/account')
@@ -351,36 +379,71 @@ def new_report():
     if request.method == 'POST':
         data = request.json
         
-        report = Report(
-            address=data.get('address'),
-            description=data.get('description'),
-            latitude=float(data.get('latitude')),
-            longitude=float(data.get('longitude')),
-            polygon_points_list=data.get('polygon_points'),  # Usar o setter
-            user_id=current_user.id
-        )
-        db.session.add(report)
-        db.session.commit()
-        return jsonify({'message': 'Denúncia registrada com sucesso'})
+        # Verificar se a denúncia está na cidade do usuário
+        try:
+            geolocator = Nominatim(user_agent="terracare")
+            report_location = geolocator.reverse(f"{data.get('latitude')}, {data.get('longitude')}")
+            report_city = report_location.raw.get('address', {}).get('city') or report_location.raw.get('address', {}).get('town')
+            
+            if report_city != current_user.city and not current_user.is_admin:
+                return jsonify({
+                    'error': 'Você só pode registrar denúncias em sua cidade'
+                }), 403
+                
+            report = Report(
+                address=data.get('address'),
+                description=data.get('description'),
+                latitude=float(data.get('latitude')),
+                longitude=float(data.get('longitude')),
+                polygon_points_list=data.get('polygon_points'),
+                user_id=current_user.id,
+                city=report_city  # Adicionar cidade ao report
+            )
+            db.session.add(report)
+            db.session.commit()
+            return jsonify({'message': 'Denúncia registrada com sucesso'})
+            
+        except Exception as e:
+            print(f"Erro ao verificar localização: {str(e)}")
+            return jsonify({'error': 'Erro ao processar localização'}), 500
     
     return render_template('report_form.html')
 
 @app.route('/reports')
 @login_required
 def reports():
-    reports = Report.query.order_by(Report.created_at.desc()).all()
+    if current_user.is_admin:
+        reports = Report.query.order_by(Report.created_at.desc()).all()
+    else:
+        reports = Report.query.filter_by(city=current_user.city)\
+            .order_by(Report.created_at.desc())\
+            .all()
+    
     return render_template('reports.html', reports=reports)
 
 @app.route('/report/<int:report_id>')
 @login_required
 def report_detail(report_id):
     report = Report.query.get_or_404(report_id)
+    
+    if report.city != current_user.city and not current_user.is_admin:
+        return jsonify({
+            'error': 'Você não tem permissão para ver denúncias de outras cidades'
+        }), 403
+    
     return render_template('report_detail.html', report=report)
 
 @app.route('/report/<int:report_id>/comment', methods=['POST'])
 @login_required
 def add_comment(report_id):
     report = Report.query.get_or_404(report_id)
+    
+    # Verificar se usuário tem permissão para comentar
+    if report.city != current_user.city and not current_user.is_admin:
+        return jsonify({
+            'error': 'Você não tem permissão para comentar em denúncias de outras cidades'
+        }), 403
+        
     content = request.form.get('content')
     
     comment = Comment(
@@ -397,9 +460,16 @@ def add_comment(report_id):
 @prefecture_required
 def update_status(report_id):
     report = Report.query.get_or_404(report_id)
+    
+    # Verificar se prefeitura tem permissão para esta cidade
+    if report.city != current_user.city and not current_user.is_admin:
+        return jsonify({
+            'error': 'Você não tem permissão para atualizar denúncias de outras cidades'
+        }), 403
+        
     status = request.json.get('status')
     
-    if status not in ['Pendente', 'Em Análise', 'Resolvido', 'Cancelado']:
+    if status not in REPORT_STATUS.values():
         return jsonify({'error': 'Status inválido'}), 400
     
     report.status = status
@@ -457,55 +527,55 @@ def prefecture_reports():
     serialized_reports = [serialize_report(report) for report in reports]
     return render_template('prefecture_reports.html', reports=reports, reports_json=serialized_reports)
 
-def init_db():
+def reset_db():
     with app.app_context():
         try:
-            # Criar tabelas se não existirem
+            # Dropar todas as tabelas
+            db.session.execute('DROP TABLE IF EXISTS alembic_version')
+            db.drop_all()
+            
+            # Recriar todas as tabelas
             db.create_all()
             
-            # Criar admin se não existir
-            admin = User.query.filter_by(email='admin@admin.admin').first()
-            if not admin:
-                admin = User(
-                    username='admin',
-                    email='admin@admin.admin',
-                    password=hash_password('senha123'),  # Usar função padronizada
-                    is_admin=True,
-                    is_prefecture=True,
-                    city='Todas'
-                )
-                db.session.add(admin)
-                db.session.commit()
-                print("Admin criado com sucesso!")
-                
+            # Criar admin padrão
+            admin = User(
+                username='admin',
+                email='admin@admin.admin',
+                password=hash_password('senha123'),
+                is_admin=True,
+                is_prefecture=True,
+                city='Todas'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Banco de dados reinicializado com sucesso!")
         except Exception as e:
-            print(f"Erro ao inicializar banco: {str(e)}")
+            print(f"Erro ao resetar banco: {str(e)}")
             db.session.rollback()
-            raise e
 
-@app.errorhandler(500)
-def internal_error(error):
-    print(f"Erro 500: {str(error)}")
-    return jsonify({'error': 'Erro interno do servidor'}), 500
+def add_city_column():
+    with app.app_context():
+        try:
+            # Adicionar coluna city diretamente
+            db.session.execute("""
+                ALTER TABLE report
+                ADD COLUMN city VARCHAR(100)
+            """)
+            
+            # Atualizar registros existentes
+            db.session.execute("""
+                UPDATE report r
+                INNER JOIN user u ON r.user_id = u.id
+                SET r.city = u.city
+            """)
+            
+            db.session.commit()
+            print("Coluna city adicionada e atualizada com sucesso!")
+            
+        except Exception as e:
+            print(f"Erro ao adicionar coluna: {str(e)}")
+            db.session.rollback()
 
-@app.route('/report/<int:id>/status', methods=['POST'])
-@login_required
-def update_report_status(id):
-    report = Report.query.get_or_404(id)
-    new_status = request.form.get('status')
-    
-    if new_status not in REPORT_STATUS.values():
-        return jsonify({'error': 'Status inválido'}), 400
-        
-    report.status = new_status
-    db.session.commit()
-    
-    return jsonify({
-        'status': report.status,
-        'color': STATUS_COLORS.get(report.status, 'gray'),
-        'description': STATUS_DESCRIPTIONS.get(report.status, '')
-    })
-
+# Use apenas se necessário
 if __name__ == '__main__':
-    # init_db()  # Comentar esta linha para não recriar o banco toda vez
     app.run(debug=True) 

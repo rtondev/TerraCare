@@ -3,65 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
+    <title>Registro - TerraCare</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(to right, #3B82F6, #10B981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="min-h-screen flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-md w-96">
-            <h2 class="text-2xl font-bold mb-6 text-center">Registro</h2>
-            <form id="registerForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nome de usuário</label>
-                    <input type="text" name="username" required 
-                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400
-                                  focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+<body class="bg-gray-50">
+    <!-- Navbar -->
+    <div x-data="{ mobileMenuOpen: false }" class="relative">
+        <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <!-- Logo -->
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="flex items-center gap-3 group">
+                            <div class="bg-gradient-to-r from-blue-600 to-blue-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
+                                <i class="fas fa-map-marked-alt text-white text-xl"></i>
+                            </div>
+                            <span class="font-bold text-xl text-gray-800 group-hover:text-blue-600 transition-colors duration-300">
+                                TerraCare
+                            </span>
+                        </a>
+                    </div>
+
+                    <!-- Links Desktop -->
+                    <div class="hidden md:flex md:items-center md:space-x-6">
+                        <a href="/login" 
+                           class="inline-flex items-center justify-center px-6 py-2 border border-transparent text-base font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            Entrar
+                        </a>
+                    </div>
+
+                    <!-- Botão Mobile -->
+                    <div class="flex items-center md:hidden">
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" 
+                                class="inline-flex items-center justify-center p-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors duration-300">
+                            <i class="fas fa-bars text-xl" x-show="!mobileMenuOpen"></i>
+                            <i class="fas fa-times text-xl" x-show="mobileMenuOpen"></i>
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" name="email" required 
-                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400
-                                  focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            </div>
+
+            <!-- Menu Mobile -->
+            <div x-show="mobileMenuOpen"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 -translate-y-1"
+                 class="md:hidden bg-white border-t shadow-lg">
+                <div class="px-4 py-4 space-y-3">
+                    <a href="/login" 
+                       class="block w-full px-4 py-3 text-center text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                        Entrar
+                    </a>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Senha</label>
-                    <input type="password" name="password" required 
-                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400
-                                  focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            </div>
+        </nav>
+    </div>
+
+    <!-- Register Section -->
+    <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-50 to-white">
+        <!-- Elementos decorativos de fundo -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-100 rounded-full opacity-50 blur-3xl"></div>
+            <div class="absolute top-60 -left-20 w-60 h-60 bg-green-100 rounded-full opacity-50 blur-3xl"></div>
+        </div>
+
+        <div class="relative w-full max-w-md px-4" data-aos="fade-up">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <div class="text-center mb-8">
+                    <div class="inline-block px-4 py-2 bg-blue-100 rounded-full text-blue-600 font-medium text-sm mb-4">
+                        🌿 Crie sua conta
+                    </div>
+                    <h2 class="text-3xl font-bold mb-2">Junte-se ao TerraCare</h2>
+                    <p class="text-gray-600">Faça parte da transformação da sua cidade</p>
                 </div>
-                <input type="hidden" name="latitude" id="latitude">
-                <input type="hidden" name="longitude" id="longitude">
-                <div id="locationStatus" class="text-sm text-gray-600 mb-4"></div>
-                <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
-                    Registrar
-                </button>
-            </form>
-            <p class="mt-4 text-center">
-                Já tem uma conta? 
-                <a href="/" class="text-blue-500 hover:text-blue-600">Voltar para página inicial</a>
-            </p>
+
+                <form id="registerForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome de usuário</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <input type="text" name="username" required 
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-sm shadow-sm placeholder-gray-400
+                                    focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                placeholder="Seu nome de usuário">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-envelope text-gray-400"></i>
+                            </div>
+                            <input type="email" name="email" required 
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-sm shadow-sm placeholder-gray-400
+                                    focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                placeholder="Seu email">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" name="password" required 
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-sm shadow-sm placeholder-gray-400
+                                    focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                placeholder="Sua senha">
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="latitude" id="latitude">
+                    <input type="hidden" name="longitude" id="longitude">
+                    <div id="locationStatus" class="text-sm flex items-center gap-2 justify-center"></div>
+
+                    <button type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-3 px-4 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                        <span>Criar Conta</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600">
+                        Já tem uma conta? 
+                        <a href="/login" class="text-blue-600 hover:text-blue-700 font-medium">Fazer login</a>
+                    </p>
+                </div>
+
+                <div class="mt-8 pt-6 border-t text-center">
+                    <a href="/" class="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        Voltar para página inicial
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
+
     <script>
+        // Inicializar AOS
+        AOS.init({
+            duration: 1000,
+            once: true
+        });
+
         // Função para obter localização
         function getLocation() {
             const statusDiv = document.getElementById('locationStatus');
             
             if ("geolocation" in navigator) {
-                statusDiv.textContent = "Obtendo sua localização...";
+                statusDiv.innerHTML = `
+                    <i class="fas fa-spinner fa-spin text-blue-500"></i>
+                    <span class="text-gray-600">Obtendo sua localização...</span>
+                `;
                 
                 navigator.geolocation.getCurrentPosition(function(position) {
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
-                    statusDiv.textContent = "✓ Localização obtida com sucesso";
-                    statusDiv.className = "text-sm text-green-600 mb-4";
+                    statusDiv.innerHTML = `
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <span class="text-green-600">Localização obtida com sucesso</span>
+                    `;
                 }, function(error) {
-                    statusDiv.textContent = "❌ Erro ao obter localização. Por favor, permita o acesso à sua localização.";
-                    statusDiv.className = "text-sm text-red-600 mb-4";
+                    statusDiv.innerHTML = `
+                        <i class="fas fa-exclamation-circle text-red-500"></i>
+                        <span class="text-red-600">Erro ao obter localização. Por favor, permita o acesso.</span>
+                    `;
                 });
             } else {
-                statusDiv.textContent = "Seu navegador não suporta geolocalização";
-                statusDiv.className = "text-sm text-red-600 mb-4";
+                statusDiv.innerHTML = `
+                    <i class="fas fa-times-circle text-red-500"></i>
+                    <span class="text-red-600">Seu navegador não suporta geolocalização</span>
+                `;
             }
         }
 
@@ -74,10 +215,26 @@
             const formData = new FormData(e.target);
             
             if (!formData.get('latitude') || !formData.get('longitude')) {
-                alert('Por favor, permita o acesso à sua localização para continuar');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Localização necessária',
+                    text: 'Por favor, permita o acesso à sua localização para continuar',
+                    confirmButtonText: 'Tentar novamente',
+                    confirmButtonColor: '#3B82F6'
+                });
                 getLocation();
                 return;
             }
+            
+            // Mostrar loading
+            Swal.fire({
+                title: 'Criando sua conta...',
+                html: 'Por favor, aguarde',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             
             try {
                 const response = await fetch('/register', {
@@ -88,14 +245,61 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('Registro realizado com sucesso!');
+                    // Mostrar mensagem de sucesso
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Conta criada com sucesso!',
+                        text: 'Redirecionando...',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        allowOutsideClick: false
+                    });
                     window.location.href = data.redirect;
                 } else {
-                    alert(data.error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao criar conta',
+                        text: data.error || 'Por favor, tente novamente',
+                        confirmButtonText: 'Ok',
+                        confirmButtonColor: '#3B82F6'
+                    });
                 }
             } catch (error) {
-                alert('Erro ao registrar');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro de conexão',
+                    text: 'Não foi possível conectar ao servidor. Por favor, verifique sua conexão e tente novamente.',
+                    confirmButtonText: 'Tentar novamente',
+                    confirmButtonColor: '#3B82F6'
+                });
             }
+        });
+
+        // Validação em tempo real
+        const form = document.getElementById('registerForm');
+        const inputs = form.querySelectorAll('input:not([type="hidden"])');
+
+        inputs.forEach(input => {
+            input.addEventListener('invalid', (e) => {
+                e.preventDefault();
+                
+                let message = '';
+                if (input.type === 'email') {
+                    message = 'Por favor, insira um email válido';
+                } else if (input.type === 'password') {
+                    message = 'A senha é obrigatória';
+                } else if (input.name === 'username') {
+                    message = 'O nome de usuário é obrigatório';
+                }
+                
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campo inválido',
+                    text: message,
+                    confirmButtonText: 'Ok',
+                    confirmButtonColor: '#3B82F6'
+                });
+            });
         });
     </script>
 </body>
