@@ -11,10 +11,5 @@
       "src": "/(.*)",
       "dest": "app.py"
     }
-  ],
-  "env": {
-    "FLASK_ENV": "production",
-    "FLASK_APP": "app.py",
-    "DATABASE_URL": "mysql+pymysql://sql5762446:ifHH5F6xhx@sql5.freesqldatabase.com:3306/sql5762446"
-  }
+  ]
 } 
