@@ -160,6 +160,15 @@ def login_page():
         return redirect(url_for('dashboard'))
     return render_template('login.html')
 
+# Constantes para hash de senha
+HASH_METHOD = 'scrypt'
+HASH_SALT_LENGTH = 16
+HASH_KEY_LENGTH = 64
+
+def hash_password(password):
+    """Função para padronizar o hash de senha em toda a aplicação"""
+    return generate_password_hash(password, method=HASH_METHOD)
+
 @app.route('/login', methods=['POST'])
 def login():
     try:
@@ -173,7 +182,7 @@ def login():
         
         password = data.get('password')
         print(f"Verificando senha para usuário: {user.username}")
-        print(f"Hash armazenado: {user.password[:20]}...")  # Mostrar parte do hash para debug
+        print(f"Método de hash usado: {user.password.split('$')[0]}")
         
         if check_password_hash(user.password, password):
             print(f"Login bem-sucedido para usuário: {user.username}")
@@ -198,9 +207,9 @@ def register():
         if User.query.filter_by(email=data.get('email')).first():
             return jsonify({'error': 'Email já cadastrado'}), 400
         
-        # Padronizar o hash da senha
+        # Usar função padronizada de hash
         password = data.get('password')
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256:150000')
+        hashed_password = hash_password(password)
         
         # Capturar localização do usuário
         latitude = data.get('latitude')
@@ -389,7 +398,7 @@ def init_db():
                 admin = User(
                     username='admin',
                     email='admin@admin.admin',
-                    password=generate_password_hash('senha123', method='pbkdf2:sha256:150000'),
+                    password=hash_password('senha123'),  # Usar função padronizada
                     is_admin=True,
                     is_prefecture=True,
                     city='Todas'

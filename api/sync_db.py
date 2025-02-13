@@ -1,6 +1,5 @@
 from http.server import BaseHTTPRequestHandler
-from app import app, db, User
-from werkzeug.security import generate_password_hash
+from app import app, db, User, hash_password
 
 def sync_database():
     with app.app_context():
@@ -14,7 +13,7 @@ def sync_database():
                 admin = User(
                     username='admin',
                     email='admin@admin.admin',
-                    password=generate_password_hash('senha123', method='pbkdf2:sha256:150000'),
+                    password=hash_password('senha123'),
                     is_admin=True,
                     is_prefecture=True,
                     city='Todas'
