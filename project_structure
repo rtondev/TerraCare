@@ -1,0 +1,16 @@
+projeto/
+  ├── app.py
+  ├── config/
+  │   └── database.py
+  ├── data/
+  │   └── db/
+  │       └── auth.db
+  ├── templates/
+  │   ├── login.html
+  │   ├── register.html
+  │   ├── profile.html
+  │   └── admin/
+  │       └── users.html
+  ├── .env
+  ├── requirements.txt
+  └── vercel.json 

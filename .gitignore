@@ -1,9 +1,0 @@
-venv/
-__pycache__/
-*.pyc
-.env
-data/backups/
-data/database.db
-
-# Não ignorar o banco versionado
-!data/versioned_database.db 
