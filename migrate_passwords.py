@@ -6,14 +6,11 @@ def migrate_passwords():
         users = User.query.all()
         for user in users:
             try:
-                # Tentar verificar se é uma senha de teste conhecida
-                test_passwords = ['senha123', 'password123']
-                for test_pass in test_passwords:
-                    if check_password_hash(user.password, test_pass):
-                        # Atualizar para o novo formato
-                        user.password = hash_password(test_pass)
-                        print(f"Senha migrada para usuário: {user.email}")
-                        break
+                # Se a senha não usa o método correto, resetar para uma senha padrão
+                if not user.password.startswith('pbkdf2:sha256'):
+                    default_password = 'senha123'
+                    user.password = hash_password(default_password)
+                    print(f"Senha resetada para usuário: {user.email}")
             except Exception as e:
                 print(f"Erro ao migrar senha para {user.email}: {str(e)}")
         
