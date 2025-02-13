@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Denúncia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        .address-suggestions {
+            position: absolute;
+            width: 100%;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            margin-top: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .suggestion-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    {% include 'components/navbar.html' %}
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Formulário -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">Nova Denúncia</h1>
+                
+                <form id="reportForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Endereço do Terreno</label>
+                        <div class="space-y-2 relative">
+                            <input type="text" name="address" id="address" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Digite o endereço ou clique no mapa"
+                                   autocomplete="off">
+                            <div id="suggestions" class="address-suggestions hidden"></div>
+                        </div>
+                        <div id="locationStatus" class="text-sm text-gray-600 mt-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Descrição do Problema</label>
+                        <textarea name="description" required rows="4"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Descreva o problema encontrado no terreno..."></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="/dashboard" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                            Enviar Denúncia
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Mapa -->
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="relative">
+                    <div id="map" class="h-[500px] rounded-lg"></div>
+                    {% include 'components/map_loading.html' %}
+                </div>
+                <div class="mt-4 space-y-2">
+                    <p class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Instruções:
+                    </p>
+                    <ul class="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                        <li>Clique no mapa para adicionar pontos e demarcar a área do terreno</li>
+                        <li>Arraste os pontos para ajustar a área</li>
+                        <li>Duplo clique em um ponto para removê-lo</li>
+                        <li>São necessários pelo menos 3 pontos para formar a área</li>
+                    </ul>
+                    <button type="button" onclick="clearArea()" 
+                            class="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 mt-2">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Limpar Área
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Declarar variáveis globalmente
+        let map, polygon;
+        let markers = [];
+        let userLat = null;
+        let userLng = null;
+        let searchTimeout;
+
+        // Função para inicializar o mapa
+        function initMap(lat, lng) {
+            console.log('Inicializando mapa...', lat, lng);
+            
+            try {
+                map = L.map('map', {
+                    center: [lat, lng],
+                    zoom: 16,
+                    zoomControl: true
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+
+                // Adicionar marcador do usuário
+                L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white',
+                        iconSize: [16, 16]
+                    })
+                }).addTo(map).bindPopup('Sua localização');
+
+                // Adicionar evento de clique no mapa
+                map.on('click', function(e) {
+                    console.log('Clique no mapa:', e.latlng);
+                    addMarkerToMap(e.latlng.lat, e.latlng.lng);
+                });
+
+                // Remover loading
+                const loadingElement = document.getElementById('mapLoading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+
+                console.log('Mapa inicializado com sucesso!');
+            } catch (error) {
+                console.error('Erro ao inicializar mapa:', error);
+            }
+        }
+
+        // Função para adicionar marcador
+        function addMarkerToMap(lat, lng) {
+            console.log('Adicionando marcador:', lat, lng);
+            
+            const marker = L.marker([lat, lng], {
+                draggable: true,
+                icon: L.divIcon({
+                    className: 'bg-red-500 w-3 h-3 rounded-full border-2 border-white',
+                    iconSize: [12, 12]
+                })
+            }).addTo(map);
+
+            markers.push(marker);
+
+            // Eventos do marcador
+            marker.on('dragend', function() {
+                console.log('Marcador arrastado');
+                updatePolygon();
+            });
+
+            marker.on('dblclick', function() {
+                console.log('Marcador removido');
+                map.removeLayer(marker);
+                markers = markers.filter(m => m !== marker);
+                updatePolygon();
+            });
+
+            // Atualizar endereço apenas no primeiro ponto
+            if (markers.length === 1) {
+                reverseGeocode(lat, lng);
+            }
+
+            updatePolygon();
+        }
+
+        // Função para atualizar o polígono
+        function updatePolygon() {
+            console.log('Atualizando polígono, marcadores:', markers.length);
+            
+            if (polygon) {
+                map.removeLayer(polygon);
+            }
+
+            if (markers.length >= 3) {
+                const coordinates = markers.map(marker => marker.getLatLng());
+                console.log('Coordenadas do polígono:', coordinates);
+                
+                polygon = L.polygon(coordinates, {
+                    color: '#FFA500',      // Cor da borda (laranja)
+                    weight: 3,             // Borda mais grossa
+                    fillColor: '#FFD700',  // Preenchimento amarelo
+                    fillOpacity: 0.35,     // Opacidade aumentada
+                    smoothFactor: 1        // Suavização das linhas
+                }).addTo(map);
+            }
+        }
+
+        // Função para limpar área
+        window.clearArea = function() {
+            console.log('Limpando área');
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            if (polygon) {
+                map.removeLayer(polygon);
+                polygon = null;
+            }
+        }
+
+        // Função para obter localização e inicializar mapa
+        function getUserLocationAndInitMap() {
+            console.log('Obtendo localização...');
+            
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        userLat = position.coords.latitude;
+                        userLng = position.coords.longitude;
+                        console.log('Localização obtida:', userLat, userLng);
+                        initMap(userLat, userLng);
+                    },
+                    function(error) {
+                        console.error('Erro ao obter localização:', error);
+                        userLat = {{ current_user.latitude or -23.5505 }};
+                        userLng = {{ current_user.longitude or -46.6333 }};
+                        initMap(userLat, userLng);
+                    }
+                );
+            } else {
+                console.log('Geolocalização não suportada');
+                userLat = {{ current_user.latitude or -23.5505 }};
+                userLng = {{ current_user.longitude or -46.6333 }};
+                initMap(userLat, userLng);
+            }
+        }
+
+        // Inicializar quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof L === 'undefined') {
+                console.error('Leaflet não está carregado!');
+                return;
+            }
+            getUserLocationAndInitMap();
+        });
+
+        // Função para buscar sugestões de endereço
+        async function searchAddress(query) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5`);
+                const data = await response.json();
+                const suggestionsDiv = document.getElementById('suggestions');
+                
+                suggestionsDiv.innerHTML = '';
+                if (data.length > 0) {
+                    suggestionsDiv.classList.remove('hidden');
+                    data.forEach(place => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.textContent = place.display_name;
+                        div.onclick = () => {
+                            document.getElementById('address').value = place.display_name;
+                            suggestionsDiv.classList.add('hidden');
+                            map.setView([place.lat, place.lon], 18);
+                            clearArea();
+                            addMarkerToMap(place.lat, place.lon);
+                        };
+                        suggestionsDiv.appendChild(div);
+                    });
+                } else {
+                    suggestionsDiv.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Erro ao buscar endereços:', error);
+            }
+        }
+
+        // Adicionar evento de input no campo de endereço
+        document.getElementById('address').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value;
+            if (query.length >= 3) {
+                searchTimeout = setTimeout(() => searchAddress(query), 300);
+            } else {
+                document.getElementById('suggestions').classList.add('hidden');
+            }
+        });
+
+        // Esconder sugestões quando clicar fora
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#address')) {
+                document.getElementById('suggestions').classList.add('hidden');
+            }
+        });
+
+        // Buscar endereço com cache
+        const geocodeCache = new Map();
+        async function reverseGeocode(lat, lng) {
+            const key = `${lat},${lng}`;
+            if (geocodeCache.has(key)) {
+                document.getElementById('address').value = geocodeCache.get(key);
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
+                const address = data.display_name;
+                document.getElementById('address').value = address;
+                geocodeCache.set(key, address);
+            } catch (error) {
+                console.error('Erro ao buscar endereço:', error);
+            }
+        }
+
+        // Manipular envio do formulário
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (markers.length < 3) {
+                alert('Por favor, marque pelo menos 3 pontos para demarcar a área do terreno');
+                return;
+            }
+
+            const formData = new FormData(e.target);
+            const center = polygon.getBounds().getCenter();
+            formData.append('latitude', center.lat);
+            formData.append('longitude', center.lng);
+
+            // Adicionar pontos do polígono
+            const polygonPoints = markers.map(marker => {
+                const latlng = marker.getLatLng();
+                return [latlng.lat, latlng.lng];
+            });
+            
+            try {
+                const response = await fetch('/report/new', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: formData.get('address'),
+                        description: formData.get('description'),
+                        latitude: center.lat,
+                        longitude: center.lng,
+                        polygon_points: polygonPoints
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Denúncia registrada com sucesso!');
+                    window.location.href = '/dashboard';
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                alert('Erro ao registrar denúncia');
+            }
+        });
+    </script>
+</body>
+</html> 

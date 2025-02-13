@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Conta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    {% include 'components/navbar.html' %}
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Minha Conta</h1>
+            
+            <div class="space-y-4">
+                <div class="border-b pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome de Usuário</label>
+                    <input type="text" value="{{ current_user.username }}" readonly 
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                </div>
+                
+                <div class="border-b pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" value="{{ current_user.email }}" readonly 
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                </div>
+                
+                <div class="border-b pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Conta</label>
+                    <input type="text" value="{{ 'Administrador' if current_user.is_admin else 'Usuário' }}" readonly 
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                </div>
+                
+                <div class="border-b pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Data de Criação</label>
+                    <input type="text" value="{{ current_user.created_at.strftime('%d/%m/%Y %H:%M') }}" readonly 
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

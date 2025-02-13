@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Denúncia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body class="bg-gray-100">
+    {% include 'components/navbar.html' %}
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Detalhes principais -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h1 class="text-2xl font-bold text-gray-800">{{ report.address }}</h1>
+                    <span class="px-3 py-1 rounded-full text-sm font-medium
+                        {% if report.status == 'Pendente' %}bg-yellow-100 text-yellow-800
+                        {% elif report.status == 'Em Análise' %}bg-blue-100 text-blue-800
+                        {% elif report.status == 'Resolvido' %}bg-green-100 text-green-800
+                        {% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ report.status }}
+                    </span>
+                </div>
+
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">Descrição</h2>
+                    <p class="text-gray-600">{{ report.description }}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <span class="text-sm text-gray-500">Reportado por</span>
+                        <p class="font-medium">{{ report.author.username }}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-500">Data</span>
+                        <p class="font-medium">{{ report.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                </div>
+
+                <!-- Mapa -->
+                <div id="map" class="h-[300px] rounded-lg"></div>
+
+                <!-- Adicionar após o mapa -->
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="flex space-x-2">
+                        <button onclick="showMyArea()" class="px-4 py-2 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            Minha Área
+                        </button>
+                        <button onclick="showAllReports()" class="px-4 py-2 bg-purple-100 text-purple-800 rounded-md hover:bg-purple-200">
+                            <i class="fas fa-globe mr-2"></i>
+                            Ver Tudo
+                        </button>
+                    </div>
+                </div>
+
+                {% if current_user.is_prefecture %}
+                <div class="mt-6">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Atualizar Status</h3>
+                    <select id="statusSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="Pendente" {% if report.status == 'Pendente' %}selected{% endif %}>Pendente</option>
+                        <option value="Em Análise" {% if report.status == 'Em Análise' %}selected{% endif %}>Em Análise</option>
+                        <option value="Resolvido" {% if report.status == 'Resolvido' %}selected{% endif %}>Resolvido</option>
+                        <option value="Cancelado" {% if report.status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                    </select>
+                    <button onclick="updateStatus()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        Atualizar Status
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Comentários -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Comentários</h2>
+                
+                <!-- Lista de comentários -->
+                <div class="space-y-4 mb-6">
+                    {% for comment in report.comments %}
+                    <div class="border-b pb-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="font-medium text-gray-800">{{ comment.author.username }}</span>
+                                <span class="text-sm text-gray-500 ml-2">
+                                    {{ comment.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </span>
+                            </div>
+                            {% if comment.author.is_prefecture %}
+                            <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Prefeitura</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-gray-600">{{ comment.content }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Formulário de comentário -->
+                <form id="commentForm" class="space-y-4">
+                    <textarea name="content" required rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Adicione um comentário..."></textarea>
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+                        Enviar Comentário
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar o mapa
+        const map = L.map('map').setView([{{ report.latitude }}, {{ report.longitude }}], 18);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Adicionar círculo ao redor da denúncia
+        L.circle([{{ report.latitude }}, {{ report.longitude }}], {
+            color: '#FFA500',
+            fillColor: '#FFD700',
+            fillOpacity: 0.1,
+            radius: 1000
+        }).addTo(map);
+
+        // Adicionar marcador
+        L.marker([{{ report.latitude }}, {{ report.longitude }}])
+            .bindPopup('{{ report.address }}')
+            .addTo(map);
+
+        // Após adicionar o marcador
+        {% if report.polygon_points_list %}
+        L.polygon({{ report.polygon_points_list|tojson }}, {
+            color: '#FFA500',
+            weight: 2,
+            fillColor: '#FFD700',
+            fillOpacity: 0.2
+        }).addTo(map);
+        {% endif %}
+
+        // Atualizar status (apenas para usuários da prefeitura)
+        async function updateStatus() {
+            const status = document.getElementById('statusSelect').value;
+            try {
+                const response = await fetch('/report/{{ report.id }}/status', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Status atualizado com sucesso!');
+                    location.reload();
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                alert('Erro ao atualizar status');
+            }
+        }
+
+        // Adicionar comentário
+        document.getElementById('commentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch('/report/{{ report.id }}/comment', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                alert('Erro ao adicionar comentário');
+            }
+        });
+
+        // Função para mostrar apenas minha área
+        function showMyArea() {
+            map.setView([userLat, userLng], 14);
+            cityCircle.setStyle({ opacity: 1, fillOpacity: 0.1 });
+        }
+
+        // Função para mostrar tudo
+        function showAllReports() {
+            const reportLocation = [{{ report.latitude }}, {{ report.longitude }}];
+            const userLocation = [userLat, userLng];
+            const bounds = L.latLngBounds([reportLocation, userLocation]);
+            map.fitBounds(bounds.pad(0.1));
+            cityCircle.setStyle({ opacity: 0.3, fillOpacity: 0.05 });
+        }
+
+        // Inicializar mostrando minha área por padrão
+        showMyArea();
+    </script>
+</body>
+</html> 
