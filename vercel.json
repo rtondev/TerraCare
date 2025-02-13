@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "app.py"
     }
-  ]
+  ],
+  "functions": {
+    "api/sync_db": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 } 

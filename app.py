@@ -15,18 +15,10 @@ from dotenv import load_dotenv
 # Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
 
-# Configurações padrão caso as variáveis de ambiente não estejam definidas
-DEFAULT_DATABASE_URL = 'mysql+pymysql://sql5762446:ifHH5F6xhx@sql5.freesqldatabase.com:3306/sql5762446'
-DEFAULT_SECRET_KEY = 'sua_chave_secreta_aqui'
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', DEFAULT_DATABASE_URL)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-print("Configurações carregadas:")
-print(f"DATABASE_URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
-print(f"SECRET_KEY definida: {'Sim' if app.config['SECRET_KEY'] else 'Não'}")
 
 # Inicializar o SQLAlchemy com retry
 class RetryingDBConnection:
@@ -38,19 +30,14 @@ class RetryingDBConnection:
     def connect(self):
         for i in range(self.retries):
             try:
-                print(f"Tentando conectar ao banco de dados... (tentativa {i+1})")
-                print(f"DATABASE_URL: {self.app.config['SQLALCHEMY_DATABASE_URI']}")
                 self.db = SQLAlchemy(self.app)
-                print("Conexão estabelecida com sucesso!")
                 return self.db
             except Exception as e:
                 if i == self.retries - 1:  # Última tentativa
-                    print(f"Erro fatal na conexão: {str(e)}")
                     raise e
-                print(f"Tentativa {i+1} falhou com erro: {str(e)}")
-                print("Tentando novamente em 1 segundo...")
+                print(f"Tentativa {i+1} de conexão com o banco falhou. Tentando novamente...")
                 import time
-                time.sleep(1)
+                time.sleep(1)  # Espera 1 segundo antes de tentar novamente
 
 db_connection = RetryingDBConnection(app)
 db = db_connection.connect()
@@ -151,15 +138,27 @@ def login_page():
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.form
-    user = User.query.filter_by(email=data.get('email')).first()
-    
-    if user and check_password_hash(user.password, data.get('password')):
-        login_user(user)
-        token = generate_token(user.id)
-        return jsonify({'token': token, 'redirect': url_for('dashboard')})
-    
-    return jsonify({'error': 'Credenciais inválidas'}), 401
+    try:
+        data = request.form
+        print(f"Tentativa de login para email: {data.get('email')}")
+        
+        user = User.query.filter_by(email=data.get('email')).first()
+        if not user:
+            print(f"Usuário não encontrado para email: {data.get('email')}")
+            return jsonify({'error': 'Credenciais inválidas'}), 401
+        
+        if check_password_hash(user.password, data.get('password')):
+            print(f"Login bem-sucedido para usuário: {user.username}")
+            login_user(user)
+            token = generate_token(user.id)
+            return jsonify({'token': token, 'redirect': url_for('dashboard')})
+        else:
+            print(f"Senha incorreta para usuário: {user.username}")
+            return jsonify({'error': 'Credenciais inválidas'}), 401
+            
+    except Exception as e:
+        print(f"Erro no login: {str(e)}")
+        return jsonify({'error': 'Erro interno do servidor'}), 500
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -358,6 +357,11 @@ def init_db():
             db.session.add(admin)
             db.session.commit()
             print("Admin criado com sucesso!")
+
+@app.errorhandler(500)
+def internal_error(error):
+    print(f"Erro 500: {str(error)}")
+    return jsonify({'error': 'Erro interno do servidor'}), 500
 
 if __name__ == '__main__':
     # init_db()  # Comentar esta linha para não recriar o banco toda vez
