@@ -144,8 +144,8 @@
         // Função para inicializar o mapa
         function initMapWithLocation(lat, lng) {
             map = L.map('map').setView([lat, lng], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
+            L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+                attribution: '© CartoDB, OpenStreetMap contributors'
             }).addTo(map);
 
             // Adicionar círculo da cidade

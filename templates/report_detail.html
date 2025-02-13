@@ -115,9 +115,9 @@
 
     <script>
         // Inicializar o mapa
-        const map = L.map('map').setView([{{ report.latitude }}, {{ report.longitude }}], 18);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+        const map = L.map('map').setView([{{ report.latitude }}, {{ report.longitude }}], 15);
+        L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+            attribution: '© CartoDB, OpenStreetMap contributors'
         }).addTo(map);
 
         // Adicionar círculo ao redor da denúncia
