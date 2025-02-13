@@ -12,10 +12,7 @@
       "dest": "app.py"
     }
   ],
-  "functions": {
-    "api/sync_db": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  }
+  "buildCommand": "pip install -r requirements.txt",
+  "outputDirectory": ".",
+  "public": true
 } 
