@@ -54,25 +54,25 @@
             <!-- Lista de denúncias -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-md p-4">
-                    <h2 class="text-xl font-semibold mb-4">Denúncias Recentes</h2>
+                    <h2 class="text-xl font-semibold mb-4">Últimas Denúncias</h2>
                     <div class="space-y-4">
                         {% for report in reports %}
-                        <div class="border-b pb-4 last:border-b-0">
+                        <div class="border-b pb-4 last:border-0">
                             <div class="flex justify-between items-start">
-                                <h3 class="font-semibold text-gray-800">{{ report.address }}</h3>
-                                <span class="text-sm px-2 py-1 rounded-full 
+                                <h3 class="font-medium text-gray-800">{{ report.address }}</h3>
+                                <span class="px-2 py-1 text-xs rounded-full font-medium
                                     {% if report.status == 'Pendente' %}bg-yellow-100 text-yellow-800
                                     {% elif report.status == 'Em Análise' %}bg-blue-100 text-blue-800
                                     {% elif report.status == 'Resolvido' %}bg-green-100 text-green-800
+                                    {% elif report.status == 'Em Verificação' %}bg-purple-100 text-purple-800
+                                    {% elif report.status == 'Reaberto' %}bg-orange-100 text-orange-800
                                     {% else %}bg-red-100 text-red-800{% endif %}">
                                     {{ report.status }}
                                 </span>
                             </div>
                             <p class="text-sm text-gray-600 mt-1">{{ report.description[:100] }}...</p>
                             <div class="flex justify-between items-center mt-2">
-                                <span class="text-xs text-gray-500">
-                                    {{ report.created_at.strftime('%d/%m/%Y %H:%M') }}
-                                </span>
+                                <span class="text-xs text-gray-500">{{ report.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
                                 <a href="/report/{{ report.id }}" class="text-blue-500 hover:text-blue-700 text-sm">
                                     Ver detalhes
                                 </a>
@@ -101,6 +101,55 @@
 
             console.log('Iniciando script do mapa');
             console.log('Localização do usuário:', userLat, userLng);
+
+            // Função para obter as cores baseadas no status
+            function getStatusColors(status) {
+                const colors = {
+                    'Pendente': {
+                        marker: '#EAB308', // yellow-500
+                        polygon: {
+                            border: '#EAB308', // yellow-500
+                            fill: '#FEF9C3'    // yellow-100
+                        }
+                    },
+                    'Em Análise': {
+                        marker: '#3B82F6', // blue-500
+                        polygon: {
+                            border: '#3B82F6', // blue-500
+                            fill: '#DBEAFE'    // blue-100
+                        }
+                    },
+                    'Resolvido': {
+                        marker: '#22C55E', // green-500
+                        polygon: {
+                            border: '#22C55E', // green-500
+                            fill: '#DCFCE7'    // green-100
+                        }
+                    },
+                    'Em Verificação': {
+                        marker: '#A855F7', // purple-500
+                        polygon: {
+                            border: '#A855F7', // purple-500
+                            fill: '#F3E8FF'    // purple-100
+                        }
+                    },
+                    'Reaberto': {
+                        marker: '#F97316', // orange-500
+                        polygon: {
+                            border: '#F97316', // orange-500
+                            fill: '#FFEDD5'    // orange-100
+                        }
+                    },
+                    'Cancelado': {
+                        marker: '#EF4444', // red-500
+                        polygon: {
+                            border: '#EF4444', // red-500
+                            fill: '#FEE2E2'    // red-100
+                        }
+                    }
+                };
+                return colors[status] || colors['Pendente'];
+            }
 
             // Função para inicializar o mapa
             function initMap() {
@@ -133,7 +182,8 @@
                     // Adicionar marcador do usuário
                     userMarker = L.marker([userLat, userLng], {
                         icon: L.divIcon({
-                            className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white shadow-lg marker-icon',
+                            className: 'relative',
+                            html: '<div class="w-4 h-4 rounded-full border-2 border-white shadow-lg bg-blue-500"></div>',
                             iconSize: [16, 16]
                         })
                     }).addTo(map).bindPopup('Sua localização');
@@ -147,53 +197,12 @@
                     }).addTo(map);
 
                     // Adicionar denúncias
-                    {% for report in reports %}
-                        {% set colors = {
-                            'Resolvido': {'marker': 'bg-green-500', 'polygon': '#22C55E', 'fill': '#86EFAC'},
-                            'Em Análise': {'marker': 'bg-blue-500', 'polygon': '#3B82F6', 'fill': '#93C5FD'},
-                            'Pendente': {'marker': 'bg-yellow-500', 'polygon': '#EAB308', 'fill': '#FDE047'},
-                            'Recorrente': {'marker': 'bg-red-500', 'polygon': '#EF4444', 'fill': '#FCA5A5'},
-                            'Cancelado': {'marker': 'bg-gray-500', 'polygon': '#6B7280', 'fill': '#D1D5DB'}
-                        }.get(report.status, {'marker': 'bg-gray-500', 'polygon': '#6B7280', 'fill': '#D1D5DB'}) %}
-                        
-                        let reportMarker{{ report.id }} = L.marker([{{ report.latitude }}, {{ report.longitude }}], {
-                            icon: L.divIcon({
-                                className: `marker-icon w-4 h-4 rounded-full border-2 border-white shadow-lg {{ colors.marker }}`,
-                                iconSize: [16, 16]
-                            })
-                        });
-
-                        reportMarker{{ report.id }}.bindPopup(`
-                            <div class="p-2">
-                                <strong>{{ report.address }}</strong><br>
-                                <span class="inline-block px-2 py-1 text-xs rounded-full mt-1
-                                    {{ colors.marker.replace('bg-', 'bg-') + '-100' }} 
-                                    {{ colors.marker.replace('bg-', 'text-') + '-800' }}">
-                                    Status: {{ report.status }}
-                                </span><br>
-                                <a href="/report/{{ report.id }}" class="text-blue-500 hover:text-blue-700 mt-2 inline-block">
-                                    Ver detalhes
-                                </a>
-                            </div>
-                        `);
-
-                        {% if report.polygon_points_list %}
-                        L.polygon({{ report.polygon_points_list|tojson }}, {
-                            color: '{{ colors.polygon }}',
-                            weight: 3,
-                            fillColor: '{{ colors.fill }}',
-                            fillOpacity: 0.2
-                        }).addTo(map);
-                        {% endif %}
-
-                        // Adicionar marcador à lista e ao mapa
-                        markers.push({
-                            marker: reportMarker{{ report.id }},
-                            status: '{{ report.status }}',
-                            latlng: [{{ report.latitude }}, {{ report.longitude }}]
-                        });
-                        reportMarker{{ report.id }}.addTo(map);
-                    {% endfor %}
+                    const reports = {{ reports_json|tojson|safe }};
+                    reports.forEach(report => {
+                        const marker = createMarker(report);
+                        markers.push(marker);
+                        marker.addTo(map);
+                    });
 
                     // Remover o loading
                     const loadingElement = document.getElementById('mapLoading');
@@ -252,6 +261,63 @@
                 }
             } else {
                 initMap();
+            }
+
+            // Atualizar a função que cria os marcadores
+            function createMarker(report) {
+                const colors = getStatusColors(report.status);
+                
+                // Criar marcador
+                const marker = L.marker([report.latitude, report.longitude], {
+                    icon: L.divIcon({
+                        className: 'relative',
+                        html: `<div class="w-4 h-4 rounded-full border-2 border-white shadow-lg" style="background-color: ${colors.marker};"></div>`,
+                        iconSize: [16, 16]
+                    })
+                });
+
+                // Adicionar popup
+                marker.bindPopup(`
+                    <div class="p-2">
+                        <strong class="block mb-1">${report.address}</strong>
+                        <span class="inline-block px-2 py-1 text-xs rounded-full" 
+                              style="background-color: ${colors.polygon.fill}; color: ${colors.marker};">
+                            ${report.status}
+                        </span>
+                        <p class="text-sm text-gray-600 mt-1">${report.description.substring(0, 100)}...</p>
+                        <a href="/report/${report.id}" class="block mt-2 text-blue-500 hover:text-blue-700">
+                            Ver detalhes
+                        </a>
+                    </div>
+                `);
+
+                // Adicionar polígono se existir
+                if (report.polygon_points && report.polygon_points.length >= 3) {
+                    const polygon = L.polygon(report.polygon_points, {
+                        color: colors.polygon.border,
+                        weight: 2,
+                        fillColor: colors.polygon.fill,
+                        fillOpacity: 0.35,
+                        opacity: 0.8
+                    }).addTo(map);
+
+                    // Adicionar interação com o polígono
+                    polygon.on('mouseover', function() {
+                        this.setStyle({
+                            fillOpacity: 0.5,
+                            opacity: 1,
+                            weight: 3
+                        });
+                    }).on('mouseout', function() {
+                        this.setStyle({
+                            fillOpacity: 0.35,
+                            opacity: 0.8,
+                            weight: 2
+                        });
+                    });
+                }
+
+                return marker;
             }
         });
     </script>

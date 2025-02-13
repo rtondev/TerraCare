@@ -110,10 +110,11 @@
             console.log('Inicializando mapa...', lat, lng);
             
             try {
+                if (map) map.remove();
+
                 map = L.map('map', {
                     center: [lat, lng],
-                    zoom: 16,
-                    zoomControl: true
+                    zoom: 16
                 });
 
                 L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
@@ -123,21 +124,26 @@
                 // Adicionar marcador do usuário
                 L.marker([lat, lng], {
                     icon: L.divIcon({
-                        className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white',
+                        className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white shadow-lg',
                         iconSize: [16, 16]
                     })
                 }).addTo(map).bindPopup('Sua localização');
 
-                // Adicionar evento de clique no mapa
+                // Adicionar círculo da área permitida
+                L.circle([lat, lng], {
+                    color: '#4A5568',
+                    fillColor: '#A0AEC0',
+                    fillOpacity: 0.1,
+                    radius: 5000
+                }).addTo(map);
+
                 map.on('click', function(e) {
-                    console.log('Clique no mapa:', e.latlng);
                     addMarkerToMap(e.latlng.lat, e.latlng.lng);
                 });
 
-                // Remover loading
                 const loadingElement = document.getElementById('mapLoading');
                 if (loadingElement) {
-                    loadingElement.remove();
+                    loadingElement.style.display = 'none';
                 }
 
                 console.log('Mapa inicializado com sucesso!');
@@ -329,14 +335,6 @@
 
             const formData = new FormData(e.target);
             const center = polygon.getBounds().getCenter();
-            formData.append('latitude', center.lat);
-            formData.append('longitude', center.lng);
-
-            // Adicionar pontos do polígono
-            const polygonPoints = markers.map(marker => {
-                const latlng = marker.getLatLng();
-                return [latlng.lat, latlng.lng];
-            });
             
             try {
                 const response = await fetch('/report/new', {
@@ -349,7 +347,10 @@
                         description: formData.get('description'),
                         latitude: center.lat,
                         longitude: center.lng,
-                        polygon_points: polygonPoints
+                        polygon_points: markers.map(marker => {
+                            const latlng = marker.getLatLng();
+                            return [latlng.lat, latlng.lng];
+                        })
                     })
                 });
                 
@@ -359,7 +360,7 @@
                     alert('Denúncia registrada com sucesso!');
                     window.location.href = '/dashboard';
                 } else {
-                    alert(data.error);
+                    alert(data.error || 'Erro ao registrar denúncia');
                 }
             } catch (error) {
                 alert('Erro ao registrar denúncia');

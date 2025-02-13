@@ -87,66 +87,83 @@
         let currentFilter = 'all';
         let userLat = null;
         let userLng = null;
+        let userCity = '{{ current_user.city }}';
+        let isAdmin = {{ 'true' if current_user.is_admin else 'false' }};
 
         // Função para criar marcadores e polígonos
         function createMarkersAndPolygons(reports) {
+            console.log('Criando marcadores para reports:', reports);
+            
             // Limpar marcadores existentes
             markers.forEach(({marker}) => marker.remove());
             markers = [];
 
             reports.forEach(report => {
-                // Criar marcador
-                const marker = L.marker([report.latitude, report.longitude], {
-                    icon: L.divIcon({
-                        className: `w-4 h-4 rounded-full border-2 border-white ${getStatusColor(report.status)}`,
-                        iconSize: [16, 16]
-                    })
-                });
+                try {
+                    // Criar marcador
+                    const marker = L.marker([report.latitude, report.longitude], {
+                        icon: L.divIcon({
+                            className: `w-4 h-4 rounded-full border-2 border-white shadow-lg ${getStatusColor(report.status)}`,
+                            iconSize: [16, 16]
+                        })
+                    });
 
-                marker.bindPopup(`
-                    <div class="p-2">
-                        <strong class="block mb-1">${report.address}</strong>
-                        <span class="inline-block px-2 py-1 text-xs rounded-full ${getStatusClass(report.status)}">
-                            ${report.status}
-                        </span>
-                        <a href="/report/${report.id}" class="block mt-2 text-blue-500 hover:text-blue-700">
-                            Ver detalhes
-                        </a>
-                    </div>
-                `);
-
-                markers.push({ marker, status: report.status });
-                marker.addTo(map);
-
-                // Adicionar polígono se houver pontos
-                if (report.polygon_points) {
-                    console.log('Pontos do polígono:', report.polygon_points);
-                    const polygon = L.polygon(report.polygon_points, {
-                        color: '#FFA500',      // Cor da borda (laranja)
-                        weight: 3,             // Borda mais grossa
-                        fillColor: '#FFD700',  // Preenchimento amarelo
-                        fillOpacity: 0.35,     // Opacidade aumentada
-                        smoothFactor: 1,       // Suavização das linhas
-                        interactive: true      // Permite interação com o polígono
-                    }).addTo(map);
-
-                    // Adicionar popup ao polígono também
-                    polygon.bindPopup(`
+                    // Popup informativo
+                    marker.bindPopup(`
                         <div class="p-2">
                             <strong class="block mb-1">${report.address}</strong>
-                            <p class="text-sm text-gray-600">Área demarcada</p>
+                            <span class="inline-block px-2 py-1 text-xs rounded-full ${getStatusClass(report.status)}">
+                                ${report.status}
+                            </span>
+                            <p class="text-sm text-gray-600 mt-1">${report.description.substring(0, 100)}...</p>
+                            <a href="/report/${report.id}" class="block mt-2 text-blue-500 hover:text-blue-700">
+                                Ver detalhes
+                            </a>
                         </div>
                     `);
+
+                    markers.push({ marker, status: report.status });
+                    marker.addTo(map);
+
+                    // Adicionar polígono se existir
+                    if (report.polygon_points && report.polygon_points.length >= 3) {
+                        const polygon = L.polygon(report.polygon_points, {
+                            color: '#FFA500',
+                            weight: 3,
+                            fillColor: '#FFD700',
+                            fillOpacity: 0.35,
+                            smoothFactor: 1
+                        }).addTo(map);
+
+                        polygon.bindPopup(`
+                            <div class="p-2">
+                                <strong class="block mb-1">${report.address}</strong>
+                                <p class="text-sm text-gray-600">Área demarcada</p>
+                            </div>
+                        `);
+                    }
+                } catch (error) {
+                    console.error('Erro ao criar marcador:', error, report);
                 }
             });
         }
 
         // Função para inicializar o mapa
         function initMapWithLocation(lat, lng) {
+            console.log('Inicializando mapa em:', lat, lng);
+            
             map = L.map('map').setView([lat, lng], 14);
             L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
                 attribution: '© CartoDB, OpenStreetMap contributors'
             }).addTo(map);
+
+            // Adicionar marcador do usuário
+            L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white shadow-lg',
+                    iconSize: [16, 16]
+                })
+            }).addTo(map).bindPopup('Sua localização');
 
             // Adicionar círculo da cidade
             cityCircle = L.circle([lat, lng], {
@@ -156,19 +173,18 @@
                 radius: 5000
             }).addTo(map);
 
-            // Adicionar marcador do usuário
-            L.marker([lat, lng], {
-                icon: L.divIcon({
-                    className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white',
-                    iconSize: [16, 16]
-                })
-            }).addTo(map).bindPopup('Sua localização');
-
-            // Carregar denúncias
+            // Carregar e filtrar denúncias
             const reports = {{ reports_json|tojson|safe }};
-            createMarkersAndPolygons(reports);
+            console.log('Reports carregados:', reports);
+            
+            const filteredReports = reports.filter(report => 
+                isAdmin || report.city === userCity
+            );
+            console.log('Reports filtrados:', filteredReports);
 
-            // Ajustar visualização para mostrar todas as denúncias
+            createMarkersAndPolygons(filteredReports);
+
+            // Ajustar visualização
             if (markers.length > 0) {
                 const bounds = L.latLngBounds(markers.map(m => m.marker.getLatLng()));
                 bounds.extend([lat, lng]); // Incluir localização do usuário
@@ -256,7 +272,9 @@
                 'Pendente': 'bg-yellow-500',
                 'Em Análise': 'bg-blue-500',
                 'Resolvido': 'bg-green-500',
-                'Cancelado': 'bg-red-500'
+                'Cancelado': 'bg-red-500',
+                'Em Verificação': 'bg-purple-500',
+                'Reaberto': 'bg-orange-500'
             };
             return colors[status] || 'bg-gray-500';
         }
@@ -267,7 +285,9 @@
                 'Pendente': 'bg-yellow-100 text-yellow-800',
                 'Em Análise': 'bg-blue-100 text-blue-800',
                 'Resolvido': 'bg-green-100 text-green-800',
-                'Cancelado': 'bg-red-100 text-red-800'
+                'Cancelado': 'bg-red-100 text-red-800',
+                'Em Verificação': 'bg-purple-100 text-purple-800',
+                'Reaberto': 'bg-orange-100 text-orange-800'
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
         }

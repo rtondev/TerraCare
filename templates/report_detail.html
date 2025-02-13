@@ -22,6 +22,8 @@
                         {% if report.status == 'Pendente' %}bg-yellow-100 text-yellow-800
                         {% elif report.status == 'Em Análise' %}bg-blue-100 text-blue-800
                         {% elif report.status == 'Resolvido' %}bg-green-100 text-green-800
+                        {% elif report.status == 'Em Verificação' %}bg-purple-100 text-purple-800
+                        {% elif report.status == 'Reaberto' %}bg-orange-100 text-orange-800
                         {% else %}bg-red-100 text-red-800{% endif %}">
                         {{ report.status }}
                     </span>
@@ -60,18 +62,47 @@
                     </div>
                 </div>
 
-                {% if current_user.is_prefecture %}
+                {% if current_user.is_prefecture or current_user.is_admin %}
                 <div class="mt-6">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Atualizar Status</h3>
-                    <select id="statusSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="Pendente" {% if report.status == 'Pendente' %}selected{% endif %}>Pendente</option>
-                        <option value="Em Análise" {% if report.status == 'Em Análise' %}selected{% endif %}>Em Análise</option>
-                        <option value="Resolvido" {% if report.status == 'Resolvido' %}selected{% endif %}>Resolvido</option>
-                        <option value="Cancelado" {% if report.status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
-                    </select>
-                    <button onclick="updateStatus()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                        Atualizar Status
-                    </button>
+                    <div class="flex items-center gap-4">
+                        <select id="statusSelect" class="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                            <option value="Pendente" 
+                                    {% if report.status == 'Pendente' %}selected{% endif %}
+                                    class="bg-yellow-100 text-yellow-800">
+                                Pendente
+                            </option>
+                            <option value="Em Análise" 
+                                    {% if report.status == 'Em Análise' %}selected{% endif %}
+                                    class="bg-blue-100 text-blue-800">
+                                Em Análise
+                            </option>
+                            <option value="Em Verificação" 
+                                    {% if report.status == 'Em Verificação' %}selected{% endif %}
+                                    class="bg-purple-100 text-purple-800">
+                                Em Verificação
+                            </option>
+                            <option value="Resolvido" 
+                                    {% if report.status == 'Resolvido' %}selected{% endif %}
+                                    class="bg-green-100 text-green-800">
+                                Resolvido
+                            </option>
+                            <option value="Reaberto" 
+                                    {% if report.status == 'Reaberto' %}selected{% endif %}
+                                    class="bg-orange-100 text-orange-800">
+                                Reaberto
+                            </option>
+                            <option value="Cancelado" 
+                                    {% if report.status == 'Cancelado' %}selected{% endif %}
+                                    class="bg-red-100 text-red-800">
+                                Cancelado
+                            </option>
+                        </select>
+                        <button onclick="updateStatus()" 
+                                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                            Atualizar Status
+                        </button>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -114,33 +145,86 @@
     </div>
 
     <script>
+        // Adicionar variáveis para localização do usuário
+        let userLat = {{ current_user.latitude or 'null' }};
+        let userLng = {{ current_user.longitude or 'null' }};
+
+        // Função para obter as cores do status
+        function getStatusColors(status) {
+            const colors = {
+                'Pendente': {
+                    bg: 'bg-yellow-100',
+                    text: 'text-yellow-800',
+                    marker: '#EAB308'
+                },
+                'Em Análise': {
+                    bg: 'bg-blue-100',
+                    text: 'text-blue-800',
+                    marker: '#3B82F6'
+                },
+                'Resolvido': {
+                    bg: 'bg-green-100',
+                    text: 'text-green-800',
+                    marker: '#22C55E'
+                },
+                'Em Verificação': {
+                    bg: 'bg-purple-100',
+                    text: 'text-purple-800',
+                    marker: '#A855F7'
+                },
+                'Reaberto': {
+                    bg: 'bg-orange-100',
+                    text: 'text-orange-800',
+                    marker: '#F97316'
+                },
+                'Cancelado': {
+                    bg: 'bg-red-100',
+                    text: 'text-red-800',
+                    marker: '#EF4444'
+                }
+            };
+            return colors[status] || colors['Pendente'];
+        }
+
         // Inicializar o mapa
         const map = L.map('map').setView([{{ report.latitude }}, {{ report.longitude }}], 15);
         L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
             attribution: '© CartoDB, OpenStreetMap contributors'
         }).addTo(map);
 
-        // Adicionar círculo ao redor da denúncia
-        L.circle([{{ report.latitude }}, {{ report.longitude }}], {
-            color: '#FFA500',
-            fillColor: '#FFD700',
-            fillOpacity: 0.1,
-            radius: 1000
+        // Adicionar marcador do usuário se tiver localização
+        if (userLat && userLng) {
+            L.marker([userLat, userLng], {
+                icon: L.divIcon({
+                    className: 'bg-blue-500 w-4 h-4 rounded-full border-2 border-white shadow-lg',
+                    iconSize: [16, 16]
+                })
+            }).addTo(map).bindPopup('Sua localização');
+        }
+
+        // Adicionar marcador da denúncia
+        const marker = L.marker([{{ report.latitude }}, {{ report.longitude }}], {
+            icon: L.divIcon({
+                className: `w-4 h-4 rounded-full border-2 border-white shadow-lg ${getStatusColors('{{ report.status }}').marker}`,
+                iconSize: [16, 16]
+            })
         }).addTo(map);
 
-        // Adicionar marcador
-        L.marker([{{ report.latitude }}, {{ report.longitude }}])
-            .bindPopup('{{ report.address }}')
-            .addTo(map);
-
-        // Após adicionar o marcador
+        // Adicionar polígono se existir
         {% if report.polygon_points_list %}
-        L.polygon({{ report.polygon_points_list|tojson }}, {
-            color: '#FFA500',
-            weight: 2,
-            fillColor: '#FFD700',
-            fillOpacity: 0.2
+        const polygon = L.polygon({{ report.polygon_points_list|tojson }}, {
+            color: '{{ status_colors.marker }}',
+            weight: 3,
+            fillColor: '{{ status_colors.marker }}',
+            fillOpacity: 0.35
         }).addTo(map);
+
+        // Ajustar visualização para mostrar tudo
+        const bounds = polygon.getBounds();
+        if (userLat && userLng) {
+            bounds.extend([userLat, userLng]);
+        }
+        map.fitBounds(bounds.pad(0.1));
         {% endif %}
 
         // Atualizar status (apenas para usuários da prefeitura)
@@ -150,21 +234,38 @@
                 const response = await fetch('/report/{{ report.id }}/status', {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ status })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
+                    // Atualizar a cor do marcador no mapa
+                    const colors = getStatusColors(status);
+                    marker.setIcon(L.divIcon({
+                        className: 'relative',
+                        html: `<div class="w-4 h-4 rounded-full border-2 border-white shadow-lg" style="background-color: ${colors.marker};"></div>`,
+                        iconSize: [16, 16]
+                    }));
+
+                    // Atualizar a cor do polígono se existir
+                    if (polygon) {
+                        polygon.setStyle({
+                            color: colors.marker,
+                            fillColor: colors.marker
+                        });
+                    }
+
                     alert('Status atualizado com sucesso!');
-                    location.reload();
+                    location.reload(); // Recarregar para atualizar todas as cores
                 } else {
-                    alert(data.error);
+                    alert(data.error || 'Erro ao atualizar status');
                 }
             } catch (error) {
                 alert('Erro ao atualizar status');
+                console.error('Erro:', error);
             }
         }
 

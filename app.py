@@ -362,11 +362,17 @@ def dashboard():
     if current_user.is_admin:
         reports = Report.query.order_by(Report.created_at.desc()).all()
     else:
+        # Filtrar por cidade do usuário
         reports = Report.query.filter_by(city=current_user.city)\
             .order_by(Report.created_at.desc())\
             .all()
+
+    # Serializar os reports para JSON
+    serialized_reports = [serialize_report(report) for report in reports]
     
-    return render_template('home.html', reports=reports)
+    return render_template('home.html', 
+                         reports=reports,  # Para o template HTML
+                         reports_json=serialized_reports)  # Para o JavaScript
 
 @app.route('/account')
 @login_required
@@ -382,10 +388,10 @@ def new_report():
         # Verificar se a denúncia está na cidade do usuário
         try:
             geolocator = Nominatim(user_agent="terracare")
-            report_location = geolocator.reverse(f"{data.get('latitude')}, {data.get('longitude')}")
-            report_city = report_location.raw.get('address', {}).get('city') or report_location.raw.get('address', {}).get('town')
+            location = geolocator.reverse(f"{data.get('latitude')}, {data.get('longitude')}")
+            report_city = location.raw.get('address', {}).get('city') or location.raw.get('address', {}).get('town')
             
-            if report_city != current_user.city and not current_user.is_admin:
+            if not current_user.is_admin and report_city != current_user.city:
                 return jsonify({
                     'error': 'Você só pode registrar denúncias em sua cidade'
                 }), 403
@@ -395,17 +401,17 @@ def new_report():
                 description=data.get('description'),
                 latitude=float(data.get('latitude')),
                 longitude=float(data.get('longitude')),
-                polygon_points_list=data.get('polygon_points'),
+                polygon_points=dumps(data.get('polygon_points')),
                 user_id=current_user.id,
-                city=report_city  # Adicionar cidade ao report
+                city=report_city
             )
             db.session.add(report)
             db.session.commit()
             return jsonify({'message': 'Denúncia registrada com sucesso'})
             
         except Exception as e:
-            print(f"Erro ao verificar localização: {str(e)}")
-            return jsonify({'error': 'Erro ao processar localização'}), 500
+            print(f"Erro ao criar denúncia: {str(e)}")
+            return jsonify({'error': 'Erro ao registrar denúncia'}), 500
     
     return render_template('report_form.html')
 
@@ -421,17 +427,57 @@ def reports():
     
     return render_template('reports.html', reports=reports)
 
+def get_status_colors(status):
+    colors = {
+        'Pendente': {
+            'bg': 'bg-yellow-100',
+            'text': 'text-yellow-800',
+            'marker': '#EAB308'
+        },
+        'Em Análise': {
+            'bg': 'bg-blue-100',
+            'text': 'text-blue-800',
+            'marker': '#3B82F6'
+        },
+        'Resolvido': {
+            'bg': 'bg-green-100',
+            'text': 'text-green-800',
+            'marker': '#22C55E'
+        },
+        'Em Verificação': {
+            'bg': 'bg-purple-100',
+            'text': 'text-purple-800',
+            'marker': '#A855F7'
+        },
+        'Reaberto': {
+            'bg': 'bg-orange-100',
+            'text': 'text-orange-800',
+            'marker': '#F97316'
+        },
+        'Cancelado': {
+            'bg': 'bg-red-100',
+            'text': 'text-red-800',
+            'marker': '#EF4444'
+        }
+    }
+    return colors.get(status, colors['Pendente'])
+
 @app.route('/report/<int:report_id>')
 @login_required
 def report_detail(report_id):
     report = Report.query.get_or_404(report_id)
     
-    if report.city != current_user.city and not current_user.is_admin:
-        return jsonify({
-            'error': 'Você não tem permissão para ver denúncias de outras cidades'
-        }), 403
+    # Verificar se usuário tem permissão para ver esta denúncia
+    if not current_user.is_admin and report.city != current_user.city:
+        flash('Você não tem permissão para ver denúncias de outras cidades', 'error')
+        return redirect(url_for('dashboard'))
     
-    return render_template('report_detail.html', report=report)
+    # Obter cores do status
+    status_colors = get_status_colors(report.status)
+        
+    return render_template('report_detail.html', 
+                         report=report,
+                         status_colors=status_colors)
 
 @app.route('/report/<int:report_id>/comment', methods=['POST'])
 @login_required
@@ -502,11 +548,12 @@ def serialize_report(report):
         'id': report.id,
         'address': report.address,
         'description': report.description,
-        'latitude': report.latitude,
-        'longitude': report.longitude,
+        'latitude': float(report.latitude),  # Garantir que seja float
+        'longitude': float(report.longitude),
         'status': report.status,
+        'city': report.city,
         'created_at': report.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-        'polygon_points': report.polygon_points_list,  # Já retorna a lista de pontos
+        'polygon_points': report.polygon_points_list if report.polygon_points else [],
         'author': {
             'id': report.author.id,
             'username': report.author.username
@@ -519,13 +566,17 @@ def prefecture_reports():
     if current_user.is_admin:
         reports = Report.query.order_by(Report.created_at.desc()).all()
     else:
-        reports = Report.query.filter(
-            Report.address.like(f'%{current_user.city}%')
-        ).order_by(Report.created_at.desc()).all()
+        reports = Report.query.filter_by(city=current_user.city)\
+            .order_by(Report.created_at.desc())\
+            .all()
     
-    # Serializar os reports
     serialized_reports = [serialize_report(report) for report in reports]
-    return render_template('prefecture_reports.html', reports=reports, reports_json=serialized_reports)
+    print(f"Enviando {len(serialized_reports)} reports para o template")
+    print("Primeiro report:", serialized_reports[0] if serialized_reports else "Nenhum report")
+    
+    return render_template('prefecture_reports.html', 
+                         reports=reports, 
+                         reports_json=serialized_reports)
 
 def reset_db():
     with app.app_context():
