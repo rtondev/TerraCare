@@ -15,10 +15,18 @@ from dotenv import load_dotenv
 # Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
 
+# Configurações padrão caso as variáveis de ambiente não estejam definidas
+DEFAULT_DATABASE_URL = 'mysql+pymysql://sql5762446:ifHH5F6xhx@sql5.freesqldatabase.com:3306/sql5762446'
+DEFAULT_SECRET_KEY = 'sua_chave_secreta_aqui'
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', DEFAULT_DATABASE_URL)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+print("Configurações carregadas:")
+print(f"DATABASE_URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+print(f"SECRET_KEY definida: {'Sim' if app.config['SECRET_KEY'] else 'Não'}")
 
 # Inicializar o SQLAlchemy com retry
 class RetryingDBConnection:
@@ -30,14 +38,19 @@ class RetryingDBConnection:
     def connect(self):
         for i in range(self.retries):
             try:
+                print(f"Tentando conectar ao banco de dados... (tentativa {i+1})")
+                print(f"DATABASE_URL: {self.app.config['SQLALCHEMY_DATABASE_URI']}")
                 self.db = SQLAlchemy(self.app)
+                print("Conexão estabelecida com sucesso!")
                 return self.db
             except Exception as e:
                 if i == self.retries - 1:  # Última tentativa
+                    print(f"Erro fatal na conexão: {str(e)}")
                     raise e
-                print(f"Tentativa {i+1} de conexão com o banco falhou. Tentando novamente...")
+                print(f"Tentativa {i+1} falhou com erro: {str(e)}")
+                print("Tentando novamente em 1 segundo...")
                 import time
-                time.sleep(1)  # Espera 1 segundo antes de tentar novamente
+                time.sleep(1)
 
 db_connection = RetryingDBConnection(app)
 db = db_connection.connect()
