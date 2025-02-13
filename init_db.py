@@ -4,6 +4,9 @@ from flask_migrate import upgrade
 
 def init_db():
     with app.app_context():
+        # Criar tabelas se não existirem
+        db.create_all()
+        
         # Executa as migrações pendentes
         upgrade()
         
@@ -15,7 +18,8 @@ def init_db():
                 email='admin@admin.admin',
                 password=generate_password_hash('senha123'),
                 is_admin=True,
-                is_prefecture=True  # Admin também tem permissões de prefeitura
+                is_prefecture=True,
+                city='Todas'
             )
             db.session.add(admin)
             db.session.commit()

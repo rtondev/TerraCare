@@ -303,10 +303,7 @@ def prefecture_reports():
 
 def init_db():
     with app.app_context():
-        # Apagar todas as tabelas existentes
-        db.drop_all()
-        
-        # Criar todas as tabelas novamente
+        # Criar tabelas se não existirem
         db.create_all()
         
         # Criar admin se não existir
@@ -325,5 +322,5 @@ def init_db():
             print("Admin criado com sucesso!")
 
 if __name__ == '__main__':
-    init_db()  # Isso vai recriar o banco toda vez que o app.py for executado
+    # init_db()  # Comentar esta linha para não recriar o banco toda vez
     app.run(debug=True) 
