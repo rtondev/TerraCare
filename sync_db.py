@@ -1,6 +1,7 @@
 from app import app, db, User
 from werkzeug.security import generate_password_hash
 from flask_migrate import upgrade
+from migrations.add_new_status import upgrade as update_status
 
 def sync_db():
     with app.app_context():
@@ -26,6 +27,9 @@ def sync_db():
             else:
                 print("Usuário admin já existe")
                 
+            # Atualizar status
+            update_status()
+            
             print("Banco de dados sincronizado com sucesso!")
             
         except Exception as e:

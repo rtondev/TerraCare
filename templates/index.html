@@ -3,129 +3,571 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Denúncias de Terrenos Baldios</title>
+    <title>TerraCare - Sistema de Denúncias</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        .animate-gradient {
-            background-size: 400%;
-            -webkit-animation: gradient 15s ease infinite;
-            animation: gradient 15s ease infinite;
+        .gradient-text {
+            background: linear-gradient(to right, #3B82F6, #10B981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
         }
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
         }
     </style>
 </head>
-<body class="bg-[#0f172a] animate-gradient min-h-screen">
-    <!-- Efeito de fundo -->
-    <div class="fixed inset-0 -z-10">
-        <div class="absolute inset-0 bg-gradient-to-tr from-green-900 via-blue-900 to-purple-900 opacity-50"></div>
-        <div class="absolute h-full w-full">
-            <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-green-500/20 rounded-full mix-blend-multiply filter blur-3xl"></div>
-            <div class="absolute top-1/3 right-1/3 w-64 h-64 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-3xl"></div>
-            <div class="absolute bottom-1/4 left-1/2 w-64 h-64 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl"></div>
-        </div>
+<body class="bg-gray-50">
+    <div x-data="{ mobileMenuOpen: false }" class="relative">
+        <!-- Navbar do Index -->
+        <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <!-- Logo -->
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="flex items-center gap-3 group">
+                            <div class="bg-gradient-to-r from-blue-600 to-blue-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
+                                <i class="fas fa-map-marked-alt text-white text-xl"></i>
+                            </div>
+                            <span class="font-bold text-xl text-gray-800 group-hover:text-blue-600 transition-colors duration-300">
+                                TerraCare
+                            </span>
+                        </a>
+                    </div>
+
+                    <!-- Links Desktop -->
+                    <div class="hidden md:flex md:items-center md:space-x-6">
+                        <a href="/login" 
+                           class="text-base font-medium text-gray-600 hover:text-blue-600 transition-colors duration-300">
+                            Entrar
+                        </a>
+                        <a href="/register" 
+                           class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            Criar Conta
+                        </a>
+                    </div>
+
+                    <!-- Botão Mobile -->
+                    <div class="flex items-center md:hidden">
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" 
+                                class="inline-flex items-center justify-center p-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors duration-300">
+                            <i class="fas fa-bars text-xl" x-show="!mobileMenuOpen"></i>
+                            <i class="fas fa-times text-xl" x-show="mobileMenuOpen"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Mobile -->
+            <div x-show="mobileMenuOpen"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 -translate-y-1"
+                 class="md:hidden bg-white border-t shadow-lg">
+                <div class="px-4 py-4 space-y-3">
+                    <a href="/login" 
+                       class="block w-full px-4 py-3 text-center text-lg font-medium text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-all duration-300">
+                        Entrar
+                    </a>
+                    <a href="/register" 
+                       class="block w-full px-4 py-3 text-center text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                        Criar Conta
+                    </a>
+                </div>
+            </div>
+        </nav>
     </div>
 
-    <div class="relative container mx-auto px-4 min-h-screen flex flex-col justify-center items-center">
-        <!-- Header -->
-        <div class="text-center mb-16 space-y-6">
-            <div class="inline-block p-3 bg-white/5 backdrop-blur-lg rounded-full mb-4 ring-1 ring-white/10">
-                <i class="fas fa-map-marker-alt text-4xl text-white/90"></i>
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-blue-50 to-white">
+        <!-- Elementos decorativos de fundo -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-100 rounded-full opacity-50 blur-3xl"></div>
+            <div class="absolute top-60 -left-20 w-60 h-60 bg-green-100 rounded-full opacity-50 blur-3xl"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 relative">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <!-- Conteúdo -->
+                <div class="text-center lg:text-left" data-aos="fade-right">
+                    <div class="inline-block px-4 py-2 bg-blue-100 rounded-full text-blue-600 font-medium text-sm mb-6">
+                        🌿 Por uma cidade mais sustentável
+    </div>
+
+                    <h1 class="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
+                        Transforme sua cidade com o 
+                        <span class="relative">
+                            <span class="gradient-text">TerraCare</span>
+                            <span class="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-green-400 rounded-full"></span>
+                        </span>
+                    </h1>
+                    
+                    <p class="text-xl text-gray-600 mb-10 max-w-xl mx-auto lg:mx-0">
+                        Plataforma colaborativa para denúncia e monitoramento de terrenos abandonados. 
+                        Juntos por uma cidade mais limpa e segura.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                        <a href="/register" 
+                           class="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all transform hover:-translate-y-1 font-medium text-lg flex items-center justify-center gap-2">
+                            <span>Comece Agora</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <a href="#como-funciona" 
+                           class="px-8 py-4 border-2 border-blue-200 text-blue-600 rounded-xl hover:bg-blue-50 transition-all font-medium text-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-play text-sm"></i>
+                            <span>Como Funciona</span>
+                        </a>
+                    </div>
+
+                    <!-- Estatísticas Rápidas -->
+                    <div class="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-600 mb-1">{{ stats.total_users|default(0) }}</div>
+                            <p class="text-sm text-gray-500">Usuários</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600 mb-1">{{ stats.total_reports|default(0) }}</div>
+                            <p class="text-sm text-gray-500">Denúncias</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-purple-600 mb-1">{{ stats.cities_count|default(0) }}</div>
+                            <p class="text-sm text-gray-500">Cidades</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-yellow-600 mb-1">{{ "%.1f"|format(stats.resolution_rate|default(0)) }}%</div>
+                            <p class="text-sm text-gray-500">Resolvidos</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Imagem/Dashboard -->
+                <div class="relative" data-aos="fade-left">
+                    <div class="relative">
+                        <!-- Círculo decorativo -->
+                        <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-100 rounded-full opacity-50"></div>
+                        
+                        <!-- Container da imagem com animação -->
+                        <div class="relative bg-white rounded-2xl shadow-2xl p-2 transform hover:rotate-1 transition-transform duration-500">
+                            <img src="https://placehold.co/600x400" alt="TerraCare Dashboard" class="rounded-xl">
+                            
+                            <!-- Card flutuante de estatísticas -->
+                            <div class="absolute -bottom-6 -left-6 bg-white p-6 rounded-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-white text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600 font-medium">Denúncias Resolvidas</p>
+                                        <p class="text-2xl font-bold text-gray-900">{{ stats.resolved_reports|default(0) }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <h1 class="text-6xl font-bold text-white mb-4 tracking-tight">
-                Denúncias de Terrenos Baldios
-            </h1>
-            <p class="text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-                Ajude a manter sua cidade limpa e segura. Denuncie terrenos baldios e acompanhe as ações da prefeitura.
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="bg-blue-600 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center" data-aos="fade-up" data-aos-delay="0">
+                    <div class="text-4xl font-bold text-white mb-2">{{ stats.total_users|default(0) }}</div>
+                    <p class="text-blue-100">Usuários Ativos</p>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="100">
+                    <div class="text-4xl font-bold text-white mb-2">{{ stats.total_reports|default(0) }}</div>
+                    <p class="text-blue-100">Denúncias Registradas</p>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="200">
+                    <div class="text-4xl font-bold text-white mb-2">{{ stats.cities_count|default(0) }}</div>
+                    <p class="text-blue-100">Cidades Atendidas</p>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="300">
+                    <div class="text-4xl font-bold text-white mb-2">{{ "%.1f"|format(stats.resolution_rate|default(0)) }}%</div>
+                    <p class="text-blue-100">Taxa de Resolução</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Como Funciona -->
+    <section id="como-funciona" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-bold text-center mb-16">Como Funciona</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="text-center" data-aos="fade-up">
+                    <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-map-marker-alt text-blue-600 text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">1. Localize</h3>
+                    <p class="text-gray-600">Identifique terrenos abandonados em sua região e marque no mapa interativo.</p>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="100">
+                    <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-camera text-green-600 text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">2. Denuncie</h3>
+                    <p class="text-gray-600">Registre a denúncia com fotos e descrição detalhada do problema.</p>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="200">
+                    <div class="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-clipboard-check text-purple-600 text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">3. Acompanhe</h3>
+                    <p class="text-gray-600">Monitore o status da denúncia e as ações tomadas pela prefeitura.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fluxo do Processo -->
+    <section class="py-24 bg-gray-50 overflow-hidden">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-bold text-center mb-20" data-aos="fade-up">
+                Fluxo do Processo
+            </h2>
+            
+            <div class="relative">
+                <!-- Coluna central com ícones e linhas -->
+                <div class="absolute left-1/2 top-0 bottom-0 transform -translate-x-1/2 flex flex-col items-center">
+                    <!-- Linha vertical contínua -->
+                    <div class="absolute top-8 bottom-8 w-px bg-blue-200"></div>
+                </div>
+
+                <!-- Etapas do processo -->
+                <div class="relative z-10 space-y-20">
+                    <!-- Etapa 1: Cadastro (Texto à direita) -->
+                    <div class="grid grid-cols-[1fr,auto,1fr] items-center gap-8">
+                        <div></div> <!-- Espaço vazio à esquerda -->
+                        <div class="relative">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
+                                <i class="fas fa-user-plus text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div data-aos="fade-left">
+                            <h3 class="text-xl font-semibold mb-2">Cadastro</h3>
+                            <p class="text-gray-600">Crie sua conta gratuitamente em poucos segundos</p>
+                        </div>
+                    </div>
+
+                    <!-- Etapa 2: Localização (Texto à esquerda) -->
+                    <div class="grid grid-cols-[1fr,auto,1fr] items-center gap-8">
+                        <div class="text-right" data-aos="fade-right">
+                            <h3 class="text-xl font-semibold mb-2">Localização</h3>
+                            <p class="text-gray-600">Marque o terreno no mapa interativo</p>
+                        </div>
+                        <div class="relative">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center relative z-10">
+                                <i class="fas fa-map-marked-alt text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div></div> <!-- Espaço vazio à direita -->
+                    </div>
+
+                    <!-- Etapa 3: Denúncia (Texto à direita) -->
+                    <div class="grid grid-cols-[1fr,auto,1fr] items-center gap-8">
+                        <div></div>
+                        <div class="relative">
+                            <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                                <i class="fas fa-file-alt text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div data-aos="fade-left">
+                            <h3 class="text-xl font-semibold mb-2">Denúncia</h3>
+                            <p class="text-gray-600">Descreva o problema e adicione fotos</p>
+                        </div>
+                    </div>
+
+                    <!-- Etapa 4: Análise (Texto à esquerda) -->
+                    <div class="grid grid-cols-[1fr,auto,1fr] items-center gap-8">
+                        <div class="text-right" data-aos="fade-right">
+                            <h3 class="text-xl font-semibold mb-2">Análise</h3>
+                            <p class="text-gray-600">A prefeitura avalia e toma providências</p>
+                        </div>
+                        <div class="relative">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
+                                <i class="fas fa-clipboard-check text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div></div>
+                    </div>
+
+                    <!-- Etapa 5: Resolução (Texto à direita) -->
+                    <div class="grid grid-cols-[1fr,auto,1fr] items-center gap-8">
+                        <div></div>
+                        <div class="relative">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center relative z-10">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div data-aos="fade-left">
+                            <h3 class="text-xl font-semibold mb-2">Resolução</h3>
+                            <p class="text-gray-600">Acompanhe a resolução do problema</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status das Denúncias -->
+    <section class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-bold text-center mb-6" data-aos="fade-up">Status das Denúncias</h2>
+            <p class="text-gray-600 text-center mb-16 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+                Acompanhe em tempo real o andamento das suas denúncias através dos diferentes status do sistema
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Status: Em Análise -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-400 hover:scale-105 transition-transform duration-300" data-aos="fade-up">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-search text-blue-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg">Em Análise</h4>
+                            <p class="text-sm text-gray-600">Denúncia está sendo avaliada</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm">
+                        A equipe técnica está analisando as informações e evidências fornecidas.
+                    </p>
+                </div>
+
+                <!-- Status: Em Andamento -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-400 hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="100">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-tools text-yellow-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg">Em Andamento</h4>
+                            <p class="text-sm text-gray-600">Ações sendo executadas</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm">
+                        Medidas estão sendo tomadas para resolver a situação reportada.
+                    </p>
+                </div>
+
+                <!-- Status: Resolvido -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-400 hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="200">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-green-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg">Resolvido</h4>
+                            <p class="text-sm text-gray-600">Problema solucionado</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm">
+                        A denúncia foi atendida e o problema foi resolvido com sucesso.
             </p>
         </div>
 
-        <!-- Cards -->
-        <div class="flex flex-col md:flex-row gap-8 w-full max-w-5xl">
-            <!-- Card de Login -->
-            <div class="flex-1 bg-white/5 backdrop-blur-lg p-8 rounded-2xl ring-1 ring-white/10 card-hover">
-                <div class="text-center mb-6">
-                    <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-green-500/20">
-                        <i class="fas fa-user-circle text-2xl text-white"></i>
+                <!-- Status: Cancelado -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-400 hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="300">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-times text-red-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg">Cancelado</h4>
+                            <p class="text-sm text-gray-600">Denúncia cancelada</p>
+                        </div>
                     </div>
-                    <h2 class="text-3xl font-bold text-white mb-2">Já tem uma conta?</h2>
-                    <p class="text-white/70 mb-8">
-                        Acesse para fazer denúncias e acompanhar as atualizações
+                    <p class="text-gray-600 text-sm">
+                        A denúncia foi cancelada por solicitação ou por não atender aos critérios.
                     </p>
                 </div>
-                <a href="/login" class="group relative block w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-center py-4 px-6 rounded-xl text-lg font-semibold overflow-hidden">
-                    <span class="absolute inset-0 bg-gradient-to-r from-green-600 to-green-700 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    <span class="relative flex items-center justify-center">
-                        <i class="fas fa-sign-in-alt mr-2"></i> Fazer Login
-                    </span>
-                </a>
+
+                <!-- Status: Em Verificação -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-purple-400 hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="400">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-clipboard-check text-purple-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg">Em Verificação</h4>
+                            <p class="text-sm text-gray-600">Vistoria in loco</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm">
+                        Equipe técnica realizando vistoria presencial no local denunciado.
+                    </p>
             </div>
 
-            <!-- Card de Registro -->
-            <div class="flex-1 bg-white/5 backdrop-blur-lg p-8 rounded-2xl ring-1 ring-white/10 card-hover">
-                <div class="text-center mb-6">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-blue-500/20">
-                        <i class="fas fa-user-plus text-2xl text-white"></i>
+                <!-- Status: Reaberto -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-orange-400 hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="500">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-redo text-orange-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg">Reaberto</h4>
+                            <p class="text-sm text-gray-600">Necessita nova análise</p>
+                        </div>
                     </div>
-                    <h2 class="text-3xl font-bold text-white mb-2">Novo por aqui?</h2>
-                    <p class="text-white/70 mb-8">
-                        Registre-se para começar a contribuir com sua cidade
+                    <p class="text-gray-600 text-sm">
+                        Denúncia reaberta para reavaliação ou novas providências.
                     </p>
                 </div>
-                <a href="/register" class="group relative block w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white text-center py-4 px-6 rounded-xl text-lg font-semibold overflow-hidden">
-                    <span class="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    <span class="relative flex items-center justify-center">
-                        <i class="fas fa-user-plus mr-2"></i> Criar Conta
-                    </span>
-                </a>
             </div>
         </div>
+    </section>
 
-        <!-- Features -->
-        <div class="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
-            <div class="text-center p-6 bg-white/5 backdrop-blur-lg rounded-xl ring-1 ring-white/10 card-hover">
-                <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-map-marked-alt text-xl text-white"></i>
+    <!-- Benefícios -->
+    <section class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-bold text-center mb-20" data-aos="fade-up">
+                Benefícios do TerraCare
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="text-center" data-aos="fade-up">
+                    <div class="relative">
+                        <div class="w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl transform rotate-12 mx-auto"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <i class="fas fa-city text-white text-4xl"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-semibold mt-6 mb-4">Cidade Mais Limpa</h3>
+                    <p class="text-gray-600">Contribua para uma cidade mais organizada e saudável para todos</p>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-2">Mapeamento Inteligente</h3>
-                <p class="text-white/70">Visualize todas as denúncias em um mapa interativo</p>
+
+                <div class="text-center" data-aos="fade-up" data-aos-delay="100">
+                    <div class="relative">
+                        <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl transform rotate-12 mx-auto"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <i class="fas fa-hand-holding-heart text-white text-4xl"></i>
+                        </div>
             </div>
-            <div class="text-center p-6 bg-white/5 backdrop-blur-lg rounded-xl ring-1 ring-white/10 card-hover">
-                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-comments text-xl text-white"></i>
+                    <h3 class="text-xl font-semibold mt-6 mb-4">Participação Ativa</h3>
+                    <p class="text-gray-600">Seja um agente de mudança na sua comunidade</p>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-2">Acompanhamento</h3>
-                <p class="text-white/70">Receba atualizações e interaja com a prefeitura</p>
+
+                <div class="text-center" data-aos="fade-up" data-aos-delay="200">
+                    <div class="relative">
+                        <div class="w-24 h-24 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl transform rotate-12 mx-auto"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <i class="fas fa-chart-line text-white text-4xl"></i>
+                        </div>
             </div>
-            <div class="text-center p-6 bg-white/5 backdrop-blur-lg rounded-xl ring-1 ring-white/10 card-hover">
-                <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-chart-line text-xl text-white"></i>
+                    <h3 class="text-xl font-semibold mt-6 mb-4">Transparência</h3>
+                    <p class="text-gray-600">Acompanhe em tempo real o status das denúncias</p>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-2">Transparência</h3>
-                <p class="text-white/70">Acompanhe o status e as ações tomadas em cada denúncia</p>
             </div>
         </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="bg-gray-900 py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold text-white mb-8" data-aos="fade-up">
+                Faça parte da transformação da sua cidade
+            </h2>
+            <p class="text-xl text-gray-400 mb-12" data-aos="fade-up" data-aos-delay="100">
+                Junte-se a milhares de cidadãos comprometidos com o bem-estar urbano.
+            </p>
+            <a href="/register" class="inline-block px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all transform hover:scale-105" data-aos="fade-up" data-aos-delay="200">
+                Criar Conta Gratuitamente
+            </a>
+        </div>
+    </section>
 
         <!-- Footer -->
-        <footer class="mt-16 text-center text-white/40">
-            <p>© 2025 Sistema de Denúncias. Todos os direitos reservados.</p>
-            <div class="mt-4 space-x-6">
-                <a href="#" class="text-white/40 hover:text-white transition-colors duration-300"><i class="fab fa-twitter"></i></a>
-                <a href="#" class="text-white/40 hover:text-white transition-colors duration-300"><i class="fab fa-github"></i></a>
-                <a href="#" class="text-white/40 hover:text-white transition-colors duration-300"><i class="fab fa-linkedin"></i></a>
+    <footer class="bg-white border-t py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">TerraCare</h3>
+                    <p class="text-gray-600">Sistema de denúncias de terrenos abandonados.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Links Úteis</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-600 hover:text-blue-600">Sobre</a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-blue-600">Como Funciona</a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-blue-600">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-600 hover:text-blue-600">Termos de Uso</a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-blue-600">Privacidade</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Contato</h3>
+                    <ul class="space-y-2">
+                        <li class="text-gray-600">contato@terracare.com</li>
+                        <li class="text-gray-600">0800 123 4567</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t mt-12 pt-8 text-center text-gray-600">
+                <p>&copy; 2024 TerraCare. Todos os direitos reservados.</p>
+            </div>
             </div>
         </footer>
-    </div>
+
+    <script>
+        // Inicializar AOS (Animate on Scroll)
+        AOS.init({
+            duration: 1000,
+            once: true
+        });
+
+        // Números animados
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Animar estatísticas quando visíveis
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const statsElements = entry.target.querySelectorAll('.text-4xl');
+                    statsElements.forEach(el => {
+                        const finalValue = parseInt(el.innerHTML);
+                        animateValue(el, 0, finalValue, 2000);
+                    });
+                    observer.unobserve(entry.target);
+                }
+            });
+        });
+
+        document.querySelector('.stats-section')?.forEach(section => {
+            observer.observe(section);
+        });
+    </script>
 </body>
 </html> 

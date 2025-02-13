@@ -31,6 +31,36 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     }
 }
 
+# Adicionar no início do arquivo, junto com outras constantes
+REPORT_STATUS = {
+    'ANALYSIS': 'Em Análise',
+    'IN_PROGRESS': 'Em Andamento', 
+    'RESOLVED': 'Resolvido',
+    'CANCELLED': 'Cancelado',
+    'VERIFICATION': 'Em Verificação',
+    'REOPENED': 'Reaberto'
+}
+
+# Cores para cada status
+STATUS_COLORS = {
+    'Em Análise': 'blue',
+    'Em Andamento': 'yellow',
+    'Resolvido': 'green',
+    'Cancelado': 'red',
+    'Em Verificação': 'purple',
+    'Reaberto': 'orange'
+}
+
+# Descrições dos status
+STATUS_DESCRIPTIONS = {
+    'Em Análise': 'A equipe técnica está analisando as informações e evidências fornecidas.',
+    'Em Andamento': 'Medidas estão sendo tomadas para resolver a situação reportada.',
+    'Resolvido': 'A denúncia foi atendida e o problema foi resolvido com sucesso.',
+    'Cancelado': 'A denúncia foi cancelada por solicitação ou por não atender aos critérios.',
+    'Em Verificação': 'Equipe técnica realizando vistoria presencial no local denunciado.',
+    'Reaberto': 'Denúncia reaberta para reavaliação ou novas providências.'
+}
+
 # Inicializar o SQLAlchemy com retry
 class RetryingDBConnection:
     def __init__(self, app):
@@ -95,7 +125,7 @@ class Report(db.Model):
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
     polygon_points = db.Column(db.Text)
-    status = db.Column(db.String(20), default='Pendente')
+    status = db.Column(db.String(20), default='Em Análise')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comments = db.relationship('Comment', backref='report', lazy=True)
@@ -152,7 +182,31 @@ def prefecture_required(f):
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    return render_template('index.html')
+    
+    try:
+        # Calcular estatísticas com tratamento de erro para divisão por zero
+        total_reports = Report.query.count()
+        resolved_reports = Report.query.filter_by(status='Resolvido').count()
+        
+        stats = {
+            'total_users': User.query.count(),
+            'total_reports': total_reports,
+            'resolved_reports': resolved_reports,
+            'cities_count': db.session.query(User.city).filter(User.city.isnot(None)).distinct().count(),
+            'resolution_rate': (resolved_reports / total_reports * 100) if total_reports > 0 else 0
+        }
+    except Exception as e:
+        print(f"Erro ao calcular estatísticas: {str(e)}")
+        # Fornecer valores padrão em caso de erro
+        stats = {
+            'total_users': 0,
+            'total_reports': 0,
+            'resolved_reports': 0,
+            'cities_count': 0,
+            'resolution_rate': 0
+        }
+    
+    return render_template('index.html', stats=stats)
 
 @app.route('/login')
 def login_page():
@@ -433,6 +487,24 @@ def init_db():
 def internal_error(error):
     print(f"Erro 500: {str(error)}")
     return jsonify({'error': 'Erro interno do servidor'}), 500
+
+@app.route('/report/<int:id>/status', methods=['POST'])
+@login_required
+def update_report_status(id):
+    report = Report.query.get_or_404(id)
+    new_status = request.form.get('status')
+    
+    if new_status not in REPORT_STATUS.values():
+        return jsonify({'error': 'Status inválido'}), 400
+        
+    report.status = new_status
+    db.session.commit()
+    
+    return jsonify({
+        'status': report.status,
+        'color': STATUS_COLORS.get(report.status, 'gray'),
+        'description': STATUS_DESCRIPTIONS.get(report.status, '')
+    })
 
 if __name__ == '__main__':
     # init_db()  # Comentar esta linha para não recriar o banco toda vez
