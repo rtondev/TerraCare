@@ -627,6 +627,200 @@ def add_city_column():
             print(f"Erro ao adicionar coluna: {str(e)}")
             db.session.rollback()
 
+# Decorator para verificar token da API
+def require_api_token(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Token não fornecido'}), 401
+        try:
+            # Remove 'Bearer ' se presente
+            if token.startswith('Bearer '):
+                token = token.split(' ')[1]
+            
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            if datetime.fromtimestamp(payload['exp']) < datetime.utcnow():
+                return jsonify({'error': 'Token expirado'}), 401
+            return f(*args, **kwargs)
+        except:
+            return jsonify({'error': 'Token inválido'}), 401
+    return decorated
+
+# API Endpoints
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Dados não fornecidos'}), 400
+        
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({'error': 'Email e senha são obrigatórios'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(user.password, password):
+        token = jwt.encode({
+            'user_id': user.id,
+            'exp': datetime.utcnow() + timedelta(days=1)
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        return jsonify({
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_admin': user.is_admin,
+                'is_prefecture': user.is_prefecture,
+                'city': user.city
+            }
+        })
+    
+    return jsonify({'error': 'Credenciais inválidas'}), 401
+
+@app.route('/api/reports', methods=['GET'])
+@require_api_token
+def api_get_reports():
+    reports = Report.query.order_by(Report.created_at.desc()).all()
+    return jsonify([{
+        'id': r.id,
+        'address': r.address,
+        'description': r.description,
+        'latitude': float(r.latitude),
+        'longitude': float(r.longitude),
+        'status': r.status,
+        'city': r.city,
+        'created_at': r.created_at.isoformat(),
+        'polygon_points': r.polygon_points_list,
+        'author': {
+            'id': r.author.id,
+            'username': r.author.username
+        }
+    } for r in reports])
+
+@app.route('/api/reports', methods=['POST'])
+@require_api_token
+def api_create_report():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Dados não fornecidos'}), 400
+        
+    required = ['address', 'description', 'latitude', 'longitude']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'Campos obrigatórios faltando'}), 400
+        
+    try:
+        report = Report(
+            address=data['address'],
+            description=data['description'],
+            latitude=data['latitude'],
+            longitude=data['longitude'],
+            polygon_points=data.get('polygon_points'),
+            user_id=jwt.decode(request.headers['Authorization'].split(' ')[1], 
+                             app.config['SECRET_KEY'], 
+                             algorithms=['HS256'])['user_id']
+        )
+        db.session.add(report)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Denúncia criada com sucesso',
+            'report_id': report.id
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reports/<int:report_id>', methods=['GET'])
+@require_api_token
+def api_get_report(report_id):
+    report = Report.query.get_or_404(report_id)
+    return jsonify({
+        'id': report.id,
+        'address': report.address,
+        'description': report.description,
+        'latitude': float(report.latitude),
+        'longitude': float(report.longitude),
+        'status': report.status,
+        'city': report.city,
+        'created_at': report.created_at.isoformat(),
+        'polygon_points': report.polygon_points_list,
+        'author': {
+            'id': report.author.id,
+            'username': report.author.username
+        },
+        'comments': [{
+            'id': c.id,
+            'content': c.content,
+            'created_at': c.created_at.isoformat(),
+            'author': {
+                'id': c.author.id,
+                'username': c.author.username,
+                'is_prefecture': c.author.is_prefecture
+            }
+        } for c in report.comments]
+    })
+
+@app.route('/api/reports/<int:report_id>/status', methods=['PUT'])
+@require_api_token
+def api_update_status(report_id):
+    report = Report.query.get_or_404(report_id)
+    data = request.get_json()
+    
+    if not data or 'status' not in data:
+        return jsonify({'error': 'Status não fornecido'}), 400
+        
+    if data['status'] not in REPORT_STATUS.values():
+        return jsonify({'error': 'Status inválido'}), 400
+        
+    report.status = data['status']
+    db.session.commit()
+    
+    return jsonify({'message': 'Status atualizado com sucesso'})
+
+@app.route('/api/reports/<int:report_id>/comments', methods=['POST'])
+@require_api_token
+def api_add_comment(report_id):
+    report = Report.query.get_or_404(report_id)
+    data = request.get_json()
+    
+    if not data or 'content' not in data:
+        return jsonify({'error': 'Conteúdo não fornecido'}), 400
+        
+    user_id = jwt.decode(request.headers['Authorization'].split(' ')[1], 
+                        app.config['SECRET_KEY'], 
+                        algorithms=['HS256'])['user_id']
+    
+    comment = Comment(
+        content=data['content'],
+        user_id=user_id,
+        report_id=report_id
+    )
+    db.session.add(comment)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Comentário adicionado com sucesso',
+        'comment': {
+            'id': comment.id,
+            'content': comment.content,
+            'created_at': comment.created_at.isoformat(),
+            'author': {
+                'id': comment.author.id,
+                'username': comment.author.username,
+                'is_prefecture': comment.author.is_prefecture
+            }
+        }
+    }), 201
+
+@app.route('/api/test')
+def api_test():
+    return render_template('api_test.html')
+
 # Use apenas se necessário
 if __name__ == '__main__':
     app.run(debug=True) 
