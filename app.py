@@ -13,6 +13,7 @@ from json import dumps, loads
 from dotenv import load_dotenv
 import pymysql
 from sqlalchemy import event
+from flask_cors import CORS
 
 # Registrar o PyMySQL como driver MySQL
 pymysql.install_as_MySQLdb()
@@ -21,6 +22,11 @@ pymysql.install_as_MySQLdb()
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # Habilitar CORS para toda a aplicação
+
+# Configurar CORS com opções específicas
+app.config['CORS_HEADERS'] = 'Content-Type,Authorization'
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
